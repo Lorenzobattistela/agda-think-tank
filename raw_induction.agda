@@ -36,16 +36,45 @@ infixl 7  _*_
 data _≡_ {a} {A : Set a} (x : A) : A → Set a where
   instance refl : x ≡ x
 
+
+infix 1 begin_
+infixr 2 _≡⟨⟩_
+infix  3 _∎
+infixl 6 _⊔_
+
 postulate
-    Level : Set
+  Level : Set
 
-private 
-    variable
-        a b c ℓ ℓ₁ ℓ₂ ℓ₃ : Level
-        A : Set a
-        B : Set b
-        C : Set c
+-- {-# BUILTIN LEVEL Level #-}
 
+postulate
+  lzero : Level
+  lsuc  : (ℓ : Level) → Level
+  _⊔_   : (ℓ₁ ℓ₂ : Level) → Level
+
+
+{-# BUILTIN LEVELZERO lzero #-}
+{-# BUILTIN LEVELSUC  lsuc  #-}
+{-# BUILTIN LEVELMAX  _⊔_   #-}
+
+private
+  variable
+    a b c ℓ ℓ₁ ℓ₂ ℓ₃ : Level
+    A : Set a
+    B : Set b
+    C : Set c
+  
+REL : Set a → Set b → (ℓ : Level) → Set (a ⊔ b ⊔ suc ℓ)
+REL A B ℓ = A → B → Set ℓ
+
+Rel : Set a → (ℓ : Level) → Set (a ⊔ suc ℓ)
+Rel A ℓ = REL A A ℓ
+
+Trans : REL A B ℓ₁ → REL B C ℓ₂ → REL A C ℓ₃ → Set _
+Trans P Q R = ∀ {i j k} → P i j → Q j k → R i k
+
+Transitive : Rel A ℓ → Set _
+Transitive _∼_ = Trans _∼_ _∼_ _∼_
 
 -- if f is a fn from a to b, and x is equiv to y, f(x) should be equiv of f(y)
 congruence : ∀ (f : A → B) { x y } → x ≡ y → f x ≡ f y
@@ -54,35 +83,9 @@ congruence f refl = refl
 congruence' : ∀{f : A → B} x → f x ≡ f x
 congruence' _ = refl
 
-
-infix 1 begin_
-infixr 2 _≡⟨⟩_
-infix  3 _∎
-infixl 6 _⊔_
-
-
-postulate
-  lzero : Level
-  lsuc  : (ℓ : Level) → Level
-  _⊔_   : (ℓ₁ ℓ₂ : Level) → Level
-
-REL : Set a → Set b → (ℓ : Level) → Set (a ⊔ b ⊔ suc ℓ)
-REL A B ℓ = A → B → Set ℓ
-
-Rel : Set a → (ℓ : Level) → Set (a ⊔ suc ℓ)
-Rel A ℓ = REL A A ℓ
-
-Reflexive : Rel A ℓ → Set _
-Reflexive _∼_ = ∀ {x} → x ∼ x
-
-Trans : REL A B ℓ₁ → REL B C ℓ₂ → REL A C ℓ₃ → Set _
-Trans P Q R = ∀ {i j k} → P i j → Q j k → R i k
-
-Transitive : Rel A ℓ → Set _
-Transitive _∼_ = Trans _∼_ _∼_ _∼_
-
 trans : Transitive {A = A} _≡_
 trans refl eq = eq
+
 
 -- for all values x and y of type a, given a proof that x is equal to y return a proof that x is equal to y. Used to 
 -- begin equational reasoning
