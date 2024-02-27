@@ -9,3 +9,14 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (False; toWitnessFalse)
 -- open import Relation.Nullary.Negation using (¬?)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
+
+-- terms syntax:
+-- variables: `x
+-- abstractions: ƛ x => N
+-- applications: L @ M
+-- naturals:
+-- zero: `zero
+-- succesor: `suc M
+-- case: case L [zero => M | suc x => N]
+-- one for recursion: fixpoint: μ x => M
+
