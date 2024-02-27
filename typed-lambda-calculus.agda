@@ -20,3 +20,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
 -- case: case L [zero => M | suc x => N]
 -- one for recursion: fixpoint: μ x => M
 
+Id : Set
+Id = String
+
+infix  5  ƛ_⇒_
+infix  5  μ_⇒_
+infixl 7  _·_
+infix  8  `suc_
+infix  9  `_
+
