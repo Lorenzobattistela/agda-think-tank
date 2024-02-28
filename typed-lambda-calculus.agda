@@ -647,3 +647,32 @@ data _⊢_⦂_ : Context → Term → Type → Set where
       -----------------
     → Γ ⊢ μ x ⇒ M ⦂ A
 
+-- Most of the rules have a second name, derived from a convention in logic, whereby the rule is named after the type connective that it concerns; rules to introduce and to eliminate each connective are labeled -I and -E, respectively. As we read the rules from top to bottom, introduction and elimination rules do what they say on the tin: the first introduces a formula for the connective, which appears in the conclusion but not in the premises; while the second eliminates a formula for the connective, which appears in a premise but not in the conclusion. An introduction rule describes how to construct a value of the type (abstractions yield functions, successor and zero yield naturals), while an elimination rule describes how to deconstruct a value of the given type (applications use functions, case expressions use naturals).
+
+-- Note also the three places (in ⊢ƛ, ⊢case, and ⊢μ) where the context is extended with x and an appropriate type, corresponding to the three places where a bound variable is introduced.
+
+-- The rules are deterministic, in that at most one rule applies to every term.
+
+-- TYPE DERIVATION FOR THE NUMERAL TWO
+-- ∋z shows that in some environment Γ₂ , "z" is of type e. (zero)
+-- ∋s is demonstrating that in the same context Γ₂, "s" is a function with type A ⇒ A (suc)
+
+--                         ∋s                     ∋z
+--                         ------------------ ⊢`  -------------- ⊢`
+-- ∋s                      Γ₂ ⊢ ` "s" ⦂ A ⇒ A     Γ₂ ⊢ ` "z" ⦂ A
+-- ------------------ ⊢`   ------------------------------------- _·_ -- this application step show how functions are applied to args, always resulting in an expression of type A  because its applicating a function of type A ⇒ A to an argument of type A.
+-- Γ₂ ⊢ ` "s" ⦂ A ⇒ A      Γ₂ ⊢ ` "s" · ` "z" ⦂ A
+-- ---------------------------------------------- _·_ -- continuation of above
+-- Γ₂ ⊢ ` "s" · (` "s" · ` "z") ⦂ A
+-- -------------------------------------------- ⊢ƛ -- abstraction steps. lambdas encapsulate the exprs inside functions. This function takes a "s" function and an initial value "z", then apply "s" twice to "z" and it is of type A⇒A
+-- Γ₁ ⊢ ƛ "z" ⇒ ` "s" · (` "s" · ` "z") ⦂ A ⇒ A
+-- ------------------------------------------------------------- ⊢ƛ -- final type representation
+-- -- describes a fn of type A⇒A that takes another fn of A⇒A and a value of type A and produces a result of type A. (A⇒A)⇒A⇒A models the behavior of doubling or applying a function twice to a value.
+-- Γ ⊢ ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · (` "s" · ` "z") ⦂ (A ⇒ A) ⇒ A ⇒ A
+
+-- -- where ∋s and ∋z abbreviate the two derivations,
+--              ---------------- Z -- s is not equiv to z, and in context Γ₁, "s" is a function of type A⇒A. Therefore, in context Γ₂, "s" is a function of a to a.
+-- "s" ≢ "z"    Γ₁ ∋ "s" ⦂ A ⇒ A
+-- ----------------------------- S       ------------- Z
+-- Γ₂ ∋ "s" ⦂ A ⇒ A                       Γ₂ ∋ "z" ⦂ A
+
