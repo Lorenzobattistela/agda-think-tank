@@ -494,3 +494,156 @@ _ =
   —→⟨ β-ƛ (V—suc (V—suc V-zero)) ⟩
   -- now we need to beta reduce the application
   `suc (`suc `zero) -- which is = 2
+-- syntax of types
+
+-- for now he have just two types: function A=> B and Naturals, `ℕ
+
+infixr 7 _⇒_
+
+data Type : Set where
+  _⇒_ : Type → Type → Type
+  `ℕ : Type
+
+-- precedence
+-- functions of two or more args are represented via currying. This is made more convenient by declaring => to associate to the right and · to associate to the left. Thus:
+-- (`ℕ ⇒ `ℕ) ⇒ `ℕ ⇒ `ℕ stands for ((`ℕ ⇒ `ℕ) ⇒ (`ℕ ⇒ `ℕ)).
+-- plus · two · two stands for (plus · two) · two.
+
+-- typing
+-- Contexts
+-- while reduction considers only closed terms, typing must consider terms with free variables. To type a term, we must first type its subterms, and in particular in the body of an abstraction its bound variable may appear free.
+-- A context associates variables with types, we let Γ and Δ range over contexts. Write ∅ for the empty context, and Γ , x ⦂ A for the context that extends Γ by associating variable x with type A.
+
+-- *************************************************************************** AFFINE TYPES **************************
+-- infixl 5  _,_⦂_,_
+
+-- data Usage : Set where
+--   unused : Usage
+--   used   : Usage
+
+-- data Context : Set where
+--   ∅     : Context
+--   _,_⦂_,_ : Context → Id → Type → Usage → Context
+
+-- infix  4  _∋_⦂_
+
+-- data _∋_⦂_ : Context → Id → Type → Set where
+--   -- Assuming linear types, we can only utilize 'Z' if the variable is 'unused'.
+--   Z : ∀ {Γ x A}
+--     → Γ , x ⦂ A , unused ∋ x ⦂ A
+
+--   -- The 'S' rule is adapted to ensure that we track usage across different variables, without shadowing.
+--   S : ∀ {Γ x y A B u}
+--     → x ≢ y
+--     → Γ ∋ x ⦂ A
+--     → Γ , y ⦂ B , u ∋ x ⦂ A
+
+-- updateUsage : Context → Id → Type → Context
+-- updateUsage Γ x A = -- Implementation to mark x as 'used'
+
+-- checkUnique : Context → Id → Bool
+-- checkUnique Γ x = -- Implementation to check if 'x' is unique in 'Γ'
+-- ****************************************************************************************************
+
+data Context : Set where
+  ∅     : Context
+  _,_⦂_ : Context → Id → Type → Context
+
+-- Lookup judgement
+-- we have two forms of judgement. The first is writen:
+-- Γ ∋ x ⦂ A
+
+-- and indicates in context Γ that variable x has type A. It is called lookup. For example,
+
+-- ∅ , "s" ⦂ `ℕ ⇒ `ℕ , "z" ⦂ `ℕ ∋ "z" ⦂ `ℕ
+-- ∅ , "s" ⦂ `ℕ ⇒ `ℕ , "z" ⦂ `ℕ ∋ "s" ⦂ `ℕ ⇒ `ℕ
+-- give us the types associated with variables "z" and "s", respectively. The symbol ∋ (pronounced “ni”, for “in” backwards) is chosen because checking that Γ ∋ x ⦂ A is analogous to checking whether x ⦂ A appears in a list corresponding to Γ.
+
+-- If two variables in a context have the same name, then lookup should return the most recently bound variable, which shadows the other variables. For example,
+
+-- ∅ , "x" ⦂ `ℕ ⇒ `ℕ , "x" ⦂ `ℕ ∋ "x" ⦂ `ℕ.
+-- Here "x" ⦂ `ℕ ⇒ `ℕ is shadowed by "x" ⦂ `ℕ.
+-- (IF WE WANTED TO MAKE TYPES LINEAR, WE COULD NOT DO SHADOWING, JUST DO NOT ALLOW IT)
+
+infix  4  _∋_⦂_
+-- represents a judgement that a var of a particular type exists within a context
+-- "Within Context, there exists an identifier of Type."
+data _∋_⦂_ : Context → Id → Type → Set where
+-- Zero: used to assert that a new variable (and its type) is being added to the context. It operates under the assumption that the variable does not already exist in the context. The use of  {Γ x A} means these are implicit args. Agda infers them automatically. 
+-- Γ , x ⦂ A ∋ x ⦂ A expression declares a new variable x of type A in the context Γ
+  Z : ∀ {Γ x A}
+      ------------------
+    → Γ , x ⦂ A ∋ x ⦂ A
+
+-- successor: this constructor asserts that if a variable x of type A exists in a context Γ , it still exists in the context after adding another variable y of type B assuming x ≢ y (not equiv to y). This implements shadowing.
+  S : ∀ {Γ x y A B}
+    → x ≢ y
+    → Γ ∋ x ⦂ A
+      ------------------
+    → Γ , y ⦂ B ∋ x ⦂ A
+
+-- to make this linear, we need a more rigorous check to be implemented to ensure a variable can not only not have the same name os another variable in the same context, but also must be "consumed" exactly once if its declared (in the case of affine, no need for once.)
+-- It can be rather tedious to use the S constructor, as you have to provide proofs that x ≢ y each time. For example:
+
+-- _ : ∅ , "x" ⦂ `ℕ ⇒ `ℕ , "y" ⦂ `ℕ , "z" ⦂ `ℕ ∋ "x" ⦂ `ℕ ⇒ `ℕ
+-- _ = S (λ()) (S (λ()) Z)
+
+-- Instead, we’ll use a “smart constructor”, which uses proof by reflection to check the inequality while type checking:
+S′ : ∀ {Γ x y A B}
+   → {x≢y : False (x ≟ y)}
+   → Γ ∋ x ⦂ A
+     ------------------
+   → Γ , y ⦂ B ∋ x ⦂ A
+
+S′ {x≢y = x≢y} x = S (toWitnessFalse x≢y) x
+
+-- The second judgement is written: Γ ⊢ M ⦂ A and indicates in context Γ that term M has a type A. Cpntext provides types for all free variables in M. Example:
+-- ∅ , "s" ⦂ `ℕ ⇒ `ℕ , "z" ⦂ `ℕ ⊢ ` "z" ⦂ `ℕ
+
+infix  4  _⊢_⦂_
+
+data _⊢_⦂_ : Context → Term → Type → Set where
+
+  -- Axiom
+  ⊢` : ∀ {Γ x A}
+    → Γ ∋ x ⦂ A
+      -----------
+    → Γ ⊢ ` x ⦂ A
+
+  -- ⇒-I
+  ⊢ƛ : ∀ {Γ x N A B}
+    → Γ , x ⦂ A ⊢ N ⦂ B
+      -------------------
+    → Γ ⊢ ƛ x ⇒ N ⦂ A ⇒ B
+
+  -- ⇒-E
+  _·_ : ∀ {Γ L M A B}
+    → Γ ⊢ L ⦂ A ⇒ B
+    → Γ ⊢ M ⦂ A
+      -------------
+    → Γ ⊢ L · M ⦂ B
+
+  -- ℕ-I₁
+  ⊢zero : ∀ {Γ}
+      --------------
+    → Γ ⊢ `zero ⦂ `ℕ
+
+  -- ℕ-I₂
+  ⊢suc : ∀ {Γ M}
+    → Γ ⊢ M ⦂ `ℕ
+      ---------------
+    → Γ ⊢ `suc M ⦂ `ℕ
+
+  -- ℕ-E
+  ⊢case : ∀ {Γ L M x N A}
+    → Γ ⊢ L ⦂ `ℕ
+    → Γ ⊢ M ⦂ A
+    → Γ , x ⦂ `ℕ ⊢ N ⦂ A
+      -------------------------------------
+    → Γ ⊢ case L [zero⇒ M |suc x ⇒ N ] ⦂ A
+
+  ⊢μ : ∀ {Γ x M A}
+    → Γ , x ⦂ A ⊢ M ⦂ A
+      -----------------
+    → Γ ⊢ μ x ⇒ M ⦂ A
+
