@@ -450,3 +450,47 @@ _ =
    `suc (`suc (`suc (`suc `zero)))
   ∎
 
+
+-- reduction of one plus one = two
+_ : plusᶜ · oneᶜ · oneᶜ · sucᶜ · `zero -↠ `suc `suc `zero
+_ =
+  begin
+  -- begin expression:
+  (ƛ "m" ⇒ ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒ `"m" · `"s" · (`"n" · `"s" · `"z"))  · oneᶜ · oneᶜ · sucᶜ · `zero 
+  -- reducing left outermost m, n, and s. Beta reduction to lambda expressions
+  —→⟨ ξ-·₁ (ξ-·₁ (ξ-·₁ (β—ƛ V—ƛ)))⟩
+  -- result expr w m replaced
+  (ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒ oneᶜ · `"s" · (`"n" · `"s" · `"z")) · oneᶜ · sucᶜ · `zero
+  —→⟨ ξ-·₁ (ξ-·₁ (β—ƛ V—ƛ)) ⟩
+  -- now reduce left side again, (n)
+  -- result in:
+  (ƛ "s" ⇒ ƛ "z" ⇒ oneᶜ · `"s" · (oneᶜ · `"s" · `"z")) · sucᶜ · `zero
+  -- now lastly reducing s
+  —→⟨ ξ-·₁ (β—ƛ V—ƛ) ⟩
+  (ƛ "z" ⇒ oneᶜ · sucᶜ · (oneᶜ · sucᶜ · `"z")) · `zero
+  -- lastly we beta reduce the z arg
+  —→⟨ β—ƛ V—ƛ ⟩
+  oneᶜ · sucᶜ · (oneᶜ · sucᶜ · `zero)
+  -- now again we beta reduce the leftmost arg to get the definition of one
+  -- @z.(suc z) (one suc zero)
+  —→⟨ ξ-·₁ (β—ƛ V—ƛ) ⟩
+  (ƛ "z" ⇒ sucᶜ · `"z") · (oneᶜ · sucᶜ · `zero)
+  -- now we reduce the right side (left cannot be reduced more before that)
+  —→⟨ ξ-·₂ V-ƛ (ξ-·₁ (β-ƛ V-ƛ)) ⟩
+  -- @z.(suc z) @z.(suc z) zero
+  -- this will reduce to @z.(suc z) suc zero
+  -- and then suc suc zero = 2
+  (ƛ "z" ⇒ sucᶜ · `"z") · (ƛ "z" ⇒ sucᶜ · `"z") · `zero
+  -- reduce the application part on right side
+  —→⟨ ξ-·₂ V-ƛ (β-ƛ V-zero) ⟩
+  (ƛ "z" ⇒ sucᶜ · `"z") · sucᶜ · `zero
+  -- now we will reduce the application of suc to zero
+  —→⟨ ξ-·₂ V-ƛ (β-ƛ V-zero) ⟩
+  (ƛ "z" ⇒ sucᶜ · `"z") · `suc `zero
+  -- finally we apply beta reduction to the expr
+  -- getting suc (suc zero)
+  —→⟨ β-ƛ (V—suc (V—suc V-zero)) ⟩
+  sucᶜ · `suc `zero
+  —→⟨ β-ƛ (V—suc (V—suc V-zero)) ⟩
+  -- now we need to beta reduce the application
+  `suc (`suc `zero) -- which is = 2
