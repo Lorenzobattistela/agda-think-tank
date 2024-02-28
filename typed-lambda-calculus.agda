@@ -686,3 +686,16 @@ Ch A = (A ⇒ A) ⇒ A ⇒ A
   ∋s = S′ Z
   ∋z = Z
 
+threeᶜ : Term
+-- @s.@z(s (s (s z))) onde z é zero e s é uma função sucessor q retorna n + 1
+threeᶜ = ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · ( `"s" · (` "s" · ` "z"))
+
+Church  : Type → Type
+Church A = (A ⇒ A ⇒ A) ⇒ A ⇒ A
+
+⊢threeᶜ : ∀ {Γ A} → Γ ⊢ threeᶜ ⦂ Church A
+⊢threeᶜ = ⊢ƛ (⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))))
+  where
+  ∋s = S′ Z
+  ∋z = Z
+
