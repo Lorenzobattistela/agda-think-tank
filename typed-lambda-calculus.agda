@@ -676,3 +676,13 @@ data _⊢_⦂_ : Context → Term → Type → Set where
 -- ----------------------------- S       ------------- Z
 -- Γ₂ ∋ "s" ⦂ A ⇒ A                       Γ₂ ∋ "z" ⦂ A
 
+-- above type derivation but formalised in agda:
+Ch : Type → Type
+Ch A = (A ⇒ A) ⇒ A ⇒ A
+
+⊢twoᶜ : ∀ {Γ A} → Γ ⊢ twoᶜ ⦂ Ch A
+⊢twoᶜ = ⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))
+  where
+  ∋s = S′ Z
+  ∋z = Z
+
