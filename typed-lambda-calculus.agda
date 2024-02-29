@@ -451,54 +451,6 @@ _ =
   ∎
 
 
--- reduction of one plus one = two
-oneᶜ : Term
-oneᶜ =  ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · ` "z"
-
--- demonstrating that church numerals one plus one is two
-
-_ : plusᶜ · oneᶜ · oneᶜ · sucᶜ · `zero —↠ `suc `suc `zero
-_ =
-  begin
-  -- begin expression:
-  (ƛ "m" ⇒ ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒ `"m" · `"s" · (`"n" · `"s" · `"z"))  · oneᶜ · oneᶜ · sucᶜ · `zero 
-  -- reducing left outermost m, n, and s. Beta reduction to lambda expressions
-  —→⟨ ξ-·₁ (ξ-·₁ (ξ-·₁ (β-ƛ V-ƛ))) ⟩
-  -- result expr w m replaced
-  (ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒ oneᶜ · `"s" · (`"n" · `"s" · `"z")) · oneᶜ · sucᶜ · `zero
-  —→⟨ ξ-·₁ (ξ-·₁ (β-ƛ V-ƛ)) ⟩
-  -- now reduce left side again, (n)
-  -- result in:
-  (ƛ "s" ⇒ ƛ "z" ⇒ oneᶜ · `"s" · (oneᶜ · `"s" · `"z")) · sucᶜ · `zero
-  -- now lastly reducing s
-  —→⟨ ξ-·₁ (β-ƛ V-ƛ) ⟩
-  (ƛ "z" ⇒ oneᶜ · sucᶜ · (oneᶜ · sucᶜ · `"z")) · `zero
-  -- lastly we beta reduce the z arg
-  —→⟨ β-ƛ V-ƛ ⟩
-  oneᶜ · sucᶜ · (oneᶜ · sucᶜ · `zero)
-  -- now again we beta reduce the leftmost arg to get the definition of one
-  -- @z.(suc z) (one suc zero)
-  —→⟨ ξ-·₁ (β-ƛ V-ƛ) ⟩
-  (ƛ "z" ⇒ sucᶜ · `"z") · (oneᶜ · sucᶜ · `zero)
-  -- now we reduce the right side (left cannot be reduced more before that)
-  —→⟨ ξ-·₂ V-ƛ (ξ-·₁ (β-ƛ V-ƛ)) ⟩
-  -- @z.(suc z) @z.(suc z) zero
-  -- this will reduce to @z.(suc z) suc zero
-  -- and then suc suc zero = 2
-  (ƛ "z" ⇒ sucᶜ · `"z") · (ƛ "z" ⇒ sucᶜ · `"z") · `zero
-  -- reduce the application part on right side
-  —→⟨ ξ-·₂ V-ƛ (β-ƛ V-zero) ⟩
-  (ƛ "z" ⇒ sucᶜ · `"z") · sucᶜ · `zero
-  -- now we will reduce the application of suc to zero
-  —→⟨ ξ-·₂ V-ƛ (β-ƛ V-zero) ⟩
-  (ƛ "z" ⇒ sucᶜ · `"z") · `suc `zero
-  -- finally we apply beta reduction to the expr
-  -- getting suc (suc zero)
-  —→⟨ β-ƛ (V-suc (V-suc V-zero)) ⟩
-  sucᶜ · `suc `zero
-  —→⟨ β-ƛ (V-suc (V-suc V-zero)) ⟩
-  -- now we need to beta reduce the application
-  `suc (`suc `zero) -- which is = 2
 -- syntax of types
 
 -- for now he have just two types: function A=> B and Naturals, `ℕ
@@ -683,24 +635,90 @@ data _⊢_⦂_ : Context → Term → Type → Set where
 
 -- above type derivation but formalised in agda:
 -- receives a function and smth of type A and returns smth of type A
-Ch : Type → Type
-Ch A = (A ⇒ A) ⇒ A ⇒ A
 
 -- twoᶜ : Term
 -- twoᶜ =  ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · (` "s" · ` "z")
+
+Ch : Type → Type
+Ch A = (A ⇒ A) ⇒ A ⇒ A
 
 ⊢twoᶜ : ∀ {Γ A} → Γ ⊢ twoᶜ ⦂ Ch A
 ⊢twoᶜ = ⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))
   where
   ∋s = S′ Z
   ∋z = Z
-
 threeᶜ : Term
 threeᶜ = ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · ( `"s" · (` "s" · ` "z"))
 
 ⊢threeᶜ : ∀ {Γ A} → Γ ⊢ threeᶜ ⦂ Ch A
-⊢threeᶜ = ⊢ƛ( ⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))))
+⊢threeᶜ = ⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · (⊢` ∋s · ⊢` ∋z))))
   where
   ∋s = S′ Z
   ∋z = Z
 
+
+-- here are the typings corresponding to compute 2 + 2
+-- ⊢two : ∀ {Γ} → Γ ⊢ two ⦂ `ℕ
+-- ⊢two = ⊢suc (⊢suc ⊢zero)
+
+-- ⊢plus : ∀ {Γ} → Γ ⊢ plus ⦂ `ℕ ⇒ `ℕ ⇒ `ℕ
+-- ⊢plus = ⊢μ (⊢ƛ (⊢ƛ (⊢case (⊢` ∋m) (⊢` ∋n)
+--          (⊢suc (⊢` ∋+ · ⊢` ∋m′ · ⊢` ∋n′)))))
+--   where
+--   ∋+  = S′ (S′ (S′ Z))
+--   ∋m  = S′ Z
+--   ∋n  = Z
+--   ∋m′ = Z
+--   ∋n′ = S′ Z
+
+-- ⊢2+2 : ∅ ⊢ plus · two · two ⦂ `ℕ
+-- ⊢2+2 = ⊢plus · ⊢two · ⊢two
+
+-- In contrast to our earlier examples, here we have typed two and plus in an arbitrary context rather than the empty context; this makes it easy to use them inside other binding contexts as well as at the top level. Here the two lookup judgments ∋m and ∋m′ refer to two different bindings of variables named "m". In contrast, the two judgments ∋n and ∋n′ both refer to the same binding of "n" but accessed in different contexts, the first where "n" is the last binding in the context, and the second after "m" is bound in the successor branch of the case.
+
+-- same but for church numerals:
+⊢plusᶜ : ∀ {Γ A} → Γ  ⊢ plusᶜ ⦂ Ch A ⇒ Ch A ⇒ Ch A
+⊢plusᶜ = ⊢ƛ (⊢ƛ (⊢ƛ (⊢ƛ (⊢` ∋m · ⊢` ∋s · (⊢` ∋n · ⊢` ∋s · ⊢` ∋z)))))
+  where
+  ∋m = S′ (S′ (S′ Z))
+  ∋n = S′ (S′ Z)
+  ∋s = S′ Z
+  ∋z = Z
+
+⊢sucᶜ : ∀ {Γ} → Γ ⊢ sucᶜ ⦂ `ℕ ⇒ `ℕ
+⊢sucᶜ = ⊢ƛ (⊢suc (⊢` ∋n))
+  where
+  ∋n = Z
+
+⊢2+2ᶜ : ∅ ⊢ plusᶜ · twoᶜ · twoᶜ · sucᶜ · `zero ⦂ `ℕ
+⊢2+2ᶜ = ⊢plusᶜ · ⊢twoᶜ · ⊢twoᶜ · ⊢sucᶜ · ⊢zero
+
+-- type corresponding of three plus two
+⊢3+3ᶜ : ∅ ⊢ plusᶜ · threeᶜ  · twoᶜ · sucᶜ · `zero ⦂ `ℕ
+⊢3+3ᶜ = ⊢plusᶜ · ⊢threeᶜ · ⊢twoᶜ · ⊢sucᶜ · ⊢zero
+
+-- lookup is functional
+-- The lookup relation Γ ∋ x ⦂ A is functional, in that for each Γ and x there is at most one A such that the judgment holds:
+
+∋-functional : ∀ {Γ x A B} → Γ ∋ x ⦂ A → Γ ∋ x ⦂ B → A ≡ B
+∋-functional Z        Z          =  refl
+∋-functional Z        (S x≢ _)   =  ⊥-elim (x≢ refl)
+∋-functional (S x≢ _) Z          =  ⊥-elim (x≢ refl)
+∋-functional (S _ ∋x) (S _ ∋x′)  =  ∋-functional ∋x ∋x′
+
+-- The typing relation Γ ⊢ M ⦂ A is not functional. For example, in any Γ the term ƛ "x" ⇒ ` "x" has type A ⇒ A for any type A.
+
+-- Non-examples -> showing that terms are NOT typeable
+-- Formal proof that is not possible to type the term `zero · `suc `zero
+-- we cannot type it because doing it requires that the first term in the application is both a natural and a function
+
+nope₁ : ∀ {A} → ¬ (∅ ⊢ `zero · `suc `zero ⦂ A)
+nope₁ (() · _)
+
+-- As a second example, here is a formal proof that it is not possible to type ƛ "x" ⇒ ` "x" · ` "x". It cannot be typed, because doing so requires types A and B such that A ⇒ B ≡ A:
+
+nope₂ : ∀ {A} → ¬ (∅ ⊢ ƛ "x" ⇒ ` "x" · ` "x" ⦂ A)
+nope₂ (⊢ƛ (⊢` ∋x · ⊢` ∋x′))  =  contradiction (∋-functional ∋x ∋x′)
+  where
+  contradiction : ∀ {A B} → ¬ (A ⇒ B ≡ A)
+  contradiction ()
