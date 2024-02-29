@@ -452,28 +452,33 @@ _ =
 
 
 -- reduction of one plus one = two
-_ : plusᶜ · oneᶜ · oneᶜ · sucᶜ · `zero -↠ `suc `suc `zero
+oneᶜ : Term
+oneᶜ =  ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · ` "z"
+
+-- demonstrating that church numerals one plus one is two
+
+_ : plusᶜ · oneᶜ · oneᶜ · sucᶜ · `zero —↠ `suc `suc `zero
 _ =
   begin
   -- begin expression:
   (ƛ "m" ⇒ ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒ `"m" · `"s" · (`"n" · `"s" · `"z"))  · oneᶜ · oneᶜ · sucᶜ · `zero 
   -- reducing left outermost m, n, and s. Beta reduction to lambda expressions
-  —→⟨ ξ-·₁ (ξ-·₁ (ξ-·₁ (β—ƛ V—ƛ)))⟩
+  —→⟨ ξ-·₁ (ξ-·₁ (ξ-·₁ (β-ƛ V-ƛ))) ⟩
   -- result expr w m replaced
   (ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒ oneᶜ · `"s" · (`"n" · `"s" · `"z")) · oneᶜ · sucᶜ · `zero
-  —→⟨ ξ-·₁ (ξ-·₁ (β—ƛ V—ƛ)) ⟩
+  —→⟨ ξ-·₁ (ξ-·₁ (β-ƛ V-ƛ)) ⟩
   -- now reduce left side again, (n)
   -- result in:
   (ƛ "s" ⇒ ƛ "z" ⇒ oneᶜ · `"s" · (oneᶜ · `"s" · `"z")) · sucᶜ · `zero
   -- now lastly reducing s
-  —→⟨ ξ-·₁ (β—ƛ V—ƛ) ⟩
+  —→⟨ ξ-·₁ (β-ƛ V-ƛ) ⟩
   (ƛ "z" ⇒ oneᶜ · sucᶜ · (oneᶜ · sucᶜ · `"z")) · `zero
   -- lastly we beta reduce the z arg
-  —→⟨ β—ƛ V—ƛ ⟩
+  —→⟨ β-ƛ V-ƛ ⟩
   oneᶜ · sucᶜ · (oneᶜ · sucᶜ · `zero)
   -- now again we beta reduce the leftmost arg to get the definition of one
   -- @z.(suc z) (one suc zero)
-  —→⟨ ξ-·₁ (β—ƛ V—ƛ) ⟩
+  —→⟨ ξ-·₁ (β-ƛ V-ƛ) ⟩
   (ƛ "z" ⇒ sucᶜ · `"z") · (oneᶜ · sucᶜ · `zero)
   -- now we reduce the right side (left cannot be reduced more before that)
   —→⟨ ξ-·₂ V-ƛ (ξ-·₁ (β-ƛ V-ƛ)) ⟩
@@ -489,9 +494,9 @@ _ =
   (ƛ "z" ⇒ sucᶜ · `"z") · `suc `zero
   -- finally we apply beta reduction to the expr
   -- getting suc (suc zero)
-  —→⟨ β-ƛ (V—suc (V—suc V-zero)) ⟩
+  —→⟨ β-ƛ (V-suc (V-suc V-zero)) ⟩
   sucᶜ · `suc `zero
-  —→⟨ β-ƛ (V—suc (V—suc V-zero)) ⟩
+  —→⟨ β-ƛ (V-suc (V-suc V-zero)) ⟩
   -- now we need to beta reduce the application
   `suc (`suc `zero) -- which is = 2
 -- syntax of types
@@ -677,8 +682,12 @@ data _⊢_⦂_ : Context → Term → Type → Set where
 -- Γ₂ ∋ "s" ⦂ A ⇒ A                       Γ₂ ∋ "z" ⦂ A
 
 -- above type derivation but formalised in agda:
+-- receives a function and smth of type A and returns smth of type A
 Ch : Type → Type
 Ch A = (A ⇒ A) ⇒ A ⇒ A
+
+-- twoᶜ : Term
+-- twoᶜ =  ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · (` "s" · ` "z")
 
 ⊢twoᶜ : ∀ {Γ A} → Γ ⊢ twoᶜ ⦂ Ch A
 ⊢twoᶜ = ⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))
@@ -687,14 +696,10 @@ Ch A = (A ⇒ A) ⇒ A ⇒ A
   ∋z = Z
 
 threeᶜ : Term
--- @s.@z(s (s (s z))) onde z é zero e s é uma função sucessor q retorna n + 1
 threeᶜ = ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · ( `"s" · (` "s" · ` "z"))
 
-Church  : Type → Type
-Church A = (A ⇒ A ⇒ A) ⇒ A ⇒ A
-
-⊢threeᶜ : ∀ {Γ A} → Γ ⊢ threeᶜ ⦂ Church A
-⊢threeᶜ = ⊢ƛ (⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))))
+⊢threeᶜ : ∀ {Γ A} → Γ ⊢ threeᶜ ⦂ Ch A
+⊢threeᶜ = ⊢ƛ( ⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))))
   where
   ∋s = S′ Z
   ∋z = Z
