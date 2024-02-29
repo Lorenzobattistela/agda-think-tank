@@ -179,3 +179,184 @@ _[_] : ∀ {Γ A B}
         → Γ ⊢ A
 _[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} (subst-zero M) {A} N
 
+-- Neutral and normal terms
+-- Reduction continues until a term is fully normalised. Hence, instead of values, we are now interested in normal forms. Terms in normal form are defined by mutual recursion with neutral terms:
+
+data Neutral : ∀ {Γ A} → Γ ⊢ A → Set
+data Normal  : ∀ {Γ A} → Γ ⊢ A → Set
+
+data Neutral where
+
+  `_  : ∀ {Γ A} (x : Γ ∋ A)
+      -------------
+    → Neutral (` x)
+
+  _·_  : ∀ {Γ} {L M : Γ ⊢ ★}
+    → Neutral L
+    → Normal M
+      ---------------
+    → Neutral (L · M)
+
+-- A term is a normal form if it is neutral or an abstraction where the body is a normal form. We use ′_ to label neutral terms. Like `_, it is unobtrusive:
+
+data Normal where
+
+  ′_ : ∀ {Γ A} {M : Γ ⊢ A}
+    → Neutral M
+      ---------
+    → Normal M
+
+  ƛ_  : ∀ {Γ} {N : Γ , ★ ⊢ ★}
+    → Normal N
+      ------------
+    → Normal (ƛ N)
+
+
+-- We introduce a convenient abbreviation for evidence that a variable is neutral:
+#′_ : ∀ {Γ} (n : ℕ) {n∈Γ : True (suc n ≤? length Γ)} → Neutral {Γ} (# n)
+#′_ n {n∈Γ}  =  ` count (toWitness n∈Γ)
+
+-- For example, here is the evidence that the Church numeral two is in normal form:
+_ : Normal (twoᶜ {∅})
+_ = ƛ ƛ (′ #′ 1 · (′ #′ 1 · (′ #′ 0)))
+
+-- The evidence that a term is in normal form is almost identical to the term itself, decorated with some additional primes to indicate neutral terms, and using #′ in place of #
+
+-- Reduction step
+-- The reduction rules are altered to switch from call-by-value to call-by-name and to enable full normalisation:
+
+-- The rule ξ₁ remains the same as it was for the simply-typed lambda calculus.
+
+-- In rule ξ₂, the requirement that the term L is a value is dropped. So this rule can overlap with ξ₁ and reduction is non-deterministic. One can choose to reduce a term inside either L or M.
+
+-- In rule β, the requirement that the argument is a value is dropped, corresponding to call-by-name evaluation. This introduces further non-determinism, as β overlaps with ξ₂ when there are redexes in the argument.
+
+-- A new rule ζ is added, to enable reduction underneath a lambda.
+
+-- Here are the formalised rules:
+
+infix 2 _—→_
+
+data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
+
+  ξ₁ : ∀ {Γ} {L L′ M : Γ ⊢ ★}
+    → L —→ L′
+      ----------------
+    → L · M —→ L′ · M
+
+  ξ₂ : ∀ {Γ} {L M M′ : Γ ⊢ ★}
+    → M —→ M′
+      ----------------
+    → L · M —→ L · M′
+
+  β : ∀ {Γ} {N : Γ , ★ ⊢ ★} {M : Γ ⊢ ★}
+      ---------------------------------
+    → (ƛ N) · M —→ N [ M ]
+
+  ζ : ∀ {Γ} {N N′ : Γ , ★ ⊢ ★}
+    → N —→ N′
+      -----------
+    → ƛ N —→ ƛ N′
+
+
+-- Reflexive and transitive closure
+
+infix  2 _—↠_
+infix  1 begin_
+infixr 2 _—→⟨_⟩_
+infix  3 _∎
+
+data _—↠_ {Γ A} : (Γ ⊢ A) → (Γ ⊢ A) → Set where
+
+  _∎ : (M : Γ ⊢ A)
+      ------
+    → M —↠ M
+
+  step—→ : (L : Γ ⊢ A) {M N : Γ ⊢ A}
+    → M —↠ N
+    → L —→ M
+      ------
+    → L —↠ N
+
+pattern _—→⟨_⟩_ L L—→M M—↠N = step—→ L M—↠N L—→M
+
+begin_ : ∀ {Γ A} {M N : Γ ⊢ A}
+  → M —↠ N
+    ------
+  → M —↠ N
+begin M—↠N = M—↠N
+
+-- Example reduction sequence
+-- Here is the demonstration that two plus two is four:
+
+_ : 2+2ᶜ —↠ fourᶜ
+_ =
+  begin
+    plusᶜ · twoᶜ · twoᶜ
+  —→⟨ ξ₁ β ⟩
+    (ƛ ƛ ƛ twoᶜ · # 1 · (# 2 · # 1 · # 0)) · twoᶜ
+  —→⟨ β ⟩
+    ƛ ƛ twoᶜ · # 1 · (twoᶜ · # 1 · # 0)
+  —→⟨ ζ (ζ (ξ₁ β)) ⟩
+    ƛ ƛ ((ƛ # 2 · (# 2 · # 0)) · (twoᶜ · # 1 · # 0))
+  —→⟨ ζ (ζ β) ⟩
+    ƛ ƛ # 1 · (# 1 · (twoᶜ · # 1 · # 0))
+  —→⟨ ζ (ζ (ξ₂ (ξ₂ (ξ₁ β)))) ⟩
+    ƛ ƛ # 1 · (# 1 · ((ƛ # 2 · (# 2 · # 0)) · # 0))
+  —→⟨ ζ (ζ (ξ₂ (ξ₂ β))) ⟩
+   ƛ (ƛ # 1 · (# 1 · (# 1 · (# 1 · # 0))))
+  ∎
+
+-- After just two steps the top-level term is an abstraction, and ζ rules drive the rest of the normalisation.
+-- Progress
+-- Progress adapts. Instead of claiming that every term either is a value or takes a reduction step, we claim that every term is either in normal form or takes a reduction step.
+
+-- Previously, progress only applied to closed, well-typed terms. We had to rule out terms where we apply something other than a function (such as `zero) or terms with a free variable. Now we can demonstrate it for open, well-scoped terms. The definition of normal form permits free variables, and we have no terms that are not functions.
+
+-- A term makes progress if it can take a step or is in normal form:
+
+data Progress {Γ A} (M : Γ ⊢ A) : Set where
+
+  step : ∀ {N : Γ ⊢ A}
+    → M —→ N
+      ----------
+    → Progress M
+
+  done :
+      Normal M
+      ----------
+    → Progress M
+
+progress : ∀ {Γ A} → (M : Γ ⊢ A) → Progress M
+progress (` x)                                 =  done (′ ` x)
+progress (ƛ N)  with  progress N
+... | step N—→N′                               =  step (ζ N—→N′)
+... | done NrmN                                =  done (ƛ NrmN)
+progress (` x · M) with progress M
+... | step M—→M′                               =  step (ξ₂ M—→M′)
+... | done NrmM                                =  done (′ (` x) · NrmM)
+progress ((ƛ N) · M)                           =  step β
+progress (L@(_ · _) · M) with progress L
+... | step L—→L′                               =  step (ξ₁ L—→L′)
+... | done (′ NeuL) with progress M
+...    | step M—→M′                            =  step (ξ₂ M—→M′)
+...    | done NrmM                             =  done (′ NeuL · NrmM)
+
+-- We induct on the evidence that the term is well scoped:
+
+-- If the term is a variable, then it is in normal form. (This contrasts with previous proofs, where the variable case was ruled out by the restriction to closed terms.)
+-- If the term is an abstraction, recursively invoke progress on the body. (This contrast with previous proofs, where an abstraction is immediately a value.):
+-- If it steps, then the whole term steps via ζ.
+-- If it is in normal form, then so is the whole term.
+-- If the term is an application, consider the function subterm:
+-- If it is a variable, recursively invoke progress on the argument:
+-- If it steps, then the whole term steps via ξ₂;
+-- If it is normal, then so is the whole term.
+-- If it is an abstraction, then the whole term steps via β.
+-- If it is an application, recursively apply progress to the function subterm:
+-- If it steps, then the whole term steps via ξ₁.
+-- If it is normal, recursively apply progress to the argument subterm:
+-- If it steps, then the whole term steps via ξ₂.
+-- If it is normal, then so is the whole term.
+-- The final equation for progress uses an at pattern of the form P@Q, which matches only if both pattern P and pattern Q match. Character @ is one of the few that Agda doesn’t allow in names, so spaces are not required around it. In this case, the pattern ensures that L is an application.
+
