@@ -56,3 +56,78 @@ record Context≃ℕ : Set where
         to∘from : ∀ (y : ℕ) → to (from y) ≡ y
 
 
+-- Intrinsically-scoped variables correspond to the lookup judgment.
+
+data _∋_ : Context → Type → Set where
+
+  Z : ∀ {Γ A}
+     ---------
+   → Γ , A ∋ A
+
+  S_ : ∀ {Γ A B}
+    → Γ ∋ A
+      ---------
+    → Γ , B ∋ A
+
+-- We could write the rules with all instances of A and B replaced by ★, but arguably it is clearer not to do so.
+-- Because ★ is the only type, the judgment doesn’t guarantee anything useful about types. But it does ensure that all variables are in scope. For instance, we cannot use S S Z in a context that only binds two variables.
+
+-- Intrinsically-scoped terms correspond to the typing judgment, but with ★ as the only type. The result is that we check that terms are well scoped — that is, that all variables they mention are in scope — but not that they are well typed:
+
+data _⊢_ : Context → Type → Set where
+
+  `_ : ∀ {Γ A}
+    → Γ ∋ A
+      -----
+    → Γ ⊢ A
+
+  ƛ_  :  ∀ {Γ}
+    → Γ , ★ ⊢ ★
+      ---------
+    → Γ ⊢ ★
+
+  _·_ : ∀ {Γ}
+    → Γ ⊢ ★
+    → Γ ⊢ ★
+      ------
+    → Γ ⊢ ★
+
+-- writing variables as numerals: we can convert a natural to the corresponding de bruijn index. We no longer need to lookup the etype in the context since every variable has the same type (what whe could do in affine is lookup the context to check the usage)
+
+length : Context → ℕ
+length ∅        =  zero
+length (Γ , _)  =  suc (length Γ)
+
+count : ∀ {Γ} → {n : ℕ} → (p : n < length Γ) → Γ ∋ ★
+count {Γ , ★} {zero}    (s≤s z≤n)  =  Z
+count {Γ , ★} {(suc n)} (s≤s p)    =  S (count p)
+
+-- We can then introduce a convenient abbreviation for variables:
+
+#_ : ∀ {Γ}
+  → (n : ℕ)
+  → {n∈Γ : True (suc n ≤? length Γ)}
+    --------------------------------
+  → Γ ⊢ ★
+#_ n {n∈Γ}  =  ` count (toWitness n∈Γ)
+
+-- computing two plus two on church numerals
+twoᶜ : ∀ {Γ} → Γ ⊢ ★
+twoᶜ = ƛ ƛ (# 1 · (# 1 · # 0))
+
+fourᶜ : ∀ {Γ} → Γ ⊢ ★
+fourᶜ = ƛ ƛ (# 1 · (# 1 · (# 1 · (# 1 · # 0))))
+
+plusᶜ : ∀ {Γ} → Γ ⊢ ★
+plusᶜ = ƛ ƛ ƛ ƛ (# 3 · # 1 · (# 2 · # 1 · # 0))
+
+2+2ᶜ : ∅ ⊢ ★
+2+2ᶜ = plusᶜ · twoᶜ · twoᶜ
+
+-- computing one plus one on church numerals
+oneᶜ : ∀ {Γ} → Γ ⊢ ★
+oneᶜ = ƛ ƛ (# 1 · # 0)
+
+1+1ᶜ : ∅ ⊢ ★
+1+1ᶜ = plusᶜ · oneᶜ · oneᶜ
+
