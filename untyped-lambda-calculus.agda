@@ -150,3 +150,32 @@ rename ρ (` x)          =  ` (ρ x)
 rename ρ (ƛ N)          =  ƛ (rename (ext ρ) N)
 rename ρ (L · M)        =  (rename ρ L) · (rename ρ M)
 
+-- Simultaneous substitution
+-- Our definition of substitution is also exactly as before. First we need an extension lemma:
+exts : ∀ {Γ Δ} → (∀ {A} → Γ ∋ A → Δ ⊢ A)
+    ----------------------------------
+  → (∀ {A B} → Γ , B ∋ A → Δ , B ⊢ A)
+exts σ Z      =  ` Z
+exts σ (S x)  =  rename S_ (σ x)
+
+-- Now it is straightforward to define substitution:
+subst : ∀ {Γ Δ}
+  → (∀ {A} → Γ ∋ A → Δ ⊢ A)
+    ------------------------
+  → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
+subst σ (` k)          =  σ k
+subst σ (ƛ N)          =  ƛ (subst (exts σ) N)
+subst σ (L · M)        =  (subst σ L) · (subst σ M)
+
+-- Single substitution
+subst-zero : ∀ {Γ B} → (Γ ⊢ B) → ∀ {A} → (Γ , B ∋ A) → (Γ ⊢ A)
+subst-zero M Z      =  M
+subst-zero M (S x)  =  ` x
+
+_[_] : ∀ {Γ A B}
+        → Γ , B ⊢ A
+        → Γ ⊢ B
+          ---------
+        → Γ ⊢ A
+_[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} (subst-zero M) {A} N
+
