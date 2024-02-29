@@ -131,3 +131,22 @@ oneᶜ = ƛ ƛ (# 1 · # 0)
 1+1ᶜ : ∅ ⊢ ★
 1+1ᶜ = plusᶜ · oneᶜ · oneᶜ
 
+-- Before, reduction stopped when we reached a lambda term, so we had to compute plusᶜ · twoᶜ · twoᶜ · sucᶜ · `zero to ensure we reduced to a representation of the natural four. Now, reduction continues under lambda, so we don’t need the extra arguments. It is convenient to define a term to represent four as a Church numeral, as well as two.
+
+-- renaming -> same as before
+ext : ∀ {Γ Δ} → (∀ {A} → Γ ∋ A → Δ ∋ A)
+    -----------------------------------
+  → (∀ {A B} → Γ , B ∋ A → Δ , B ∋ A)
+ext ρ Z      =  Z
+ext ρ (S x)  =  S (ρ x)
+
+-- Now it is straightforward to define renaming:
+
+rename : ∀ {Γ Δ}
+  → (∀ {A} → Γ ∋ A → Δ ∋ A)
+    ------------------------
+  → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
+rename ρ (` x)          =  ` (ρ x)
+rename ρ (ƛ N)          =  ƛ (rename (ext ρ) N)
+rename ρ (L · M)        =  (rename ρ L) · (rename ρ M)
+
