@@ -26,6 +26,11 @@ Used = Bool
 data Type : Set where
   ★ : Type
 
+data Term : Set where
+  Lambda : Term → Term
+  Application : Term → Term → Term
+  Variable : Term
+
 data Context : Set where
   ∅   : Context
   _,_⦂_⁇_ : Context → Id → Type → Used → Context
@@ -34,3 +39,17 @@ data _∋_⦂_⁇_ : Context → Id → Type → Used → Set where
     Z : ∀ {Γ x A U}
        ----------------
       → (Γ , x ⦂ A ⁇ U) ∋ x ⦂ A ⁇ U
+
+    -- S : ∀ {Γ }
+  
+infix 4 _⊢_⦂_⁇_
+data _⊢_⦂_⁇_ : Context → Term → Type → Usage → Set where
+  ⊢` : ∀ {Γ x A U}
+    → Γ ∋ x ⦂ A ⁇ U
+      --------------- 
+    → Γ ⊢ ` x ⦂ A ⁇ U 
+  
+  ⊢ƛ : ∀ {Γ x N U₁ A B U₂}
+    → Γ , x ⦂ A ⁇ U₁ ⊢ N ⦂ B ⁇ U₂
+      -----------------------------
+    → Γ ⊢ ƛ x ⇒ N ⦂ A ⁇ U₁ ⇒ B
