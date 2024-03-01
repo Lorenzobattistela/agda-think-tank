@@ -28,28 +28,27 @@ data Type : Set where
 
 data Term : Set where
   Lambda : Term → Term
-  Application : Term → Term → Term
+  Application : Term → Term
   Variable : Term
 
 data Context : Set where
   ∅   : Context
-  _,_⦂_⁇_ : Context → Id → Type → Used → Context
+  _,_∶_ : Context → Id → Type → Context
 
-data _∋_⦂_⁇_ : Context → Id → Type → Used → Set where
-    Z : ∀ {Γ x A U}
-       ----------------
-      → (Γ , x ⦂ A ⁇ U) ∋ x ⦂ A ⁇ U
+removeFromContext : ∀ {n} → Context → Id → Context
+removeFromContext ∅ _ = ∅
 
-    -- S : ∀ {Γ }
+
+consume : Context → Id → Context
+
+-- data _∋_ : Context → Type → Set where
+--   Z : ∀ {Γ A}
+--      ---------
+--    → Γ , A ∋ A
+
+--   S_ : ∀ {Γ A B}
+--     → Γ ∋ A
+--       ---------
+--     → Γ , B ∋ A
   
-infix 4 _⊢_⦂_⁇_
-data _⊢_⦂_⁇_ : Context → Term → Type → Usage → Set where
-  ⊢` : ∀ {Γ x A U}
-    → Γ ∋ x ⦂ A ⁇ U
-      --------------- 
-    → Γ ⊢ ` x ⦂ A ⁇ U 
-  
-  ⊢ƛ : ∀ {Γ x N U₁ A B U₂}
-    → Γ , x ⦂ A ⁇ U₁ ⊢ N ⦂ B ⁇ U₂
-      -----------------------------
-    → Γ ⊢ ƛ x ⇒ N ⦂ A ⁇ U₁ ⇒ B
+-- infix 4 _⊢_⦂_⁇_
