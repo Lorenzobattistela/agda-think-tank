@@ -260,14 +260,35 @@ _ =
   ∎
 
 *-distrib-+ : ∀ (m n p : ℕ) → (m + n) * p ≡ m * p + n * p
+*-distrib-+ zero n p = refl
+*-distrib-+ (suc m) n p rewrite *-distrib-+ m n p = sym(+-assoc p (m * p) (n * p))
 
-*-assoc : ∀ (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
+*-assoc : (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
+*-assoc zero n p = refl
+*-assoc (suc m) n p rewrite *-distrib-+ n (m * n) p | *-assoc m n p = refl
 
-*-comm : ∀(m n : ℕ) → m * n ≡ n * m
+n*0≡0 : (n : ℕ) → n * 0 ≡ 0
+n*0≡0 zero = refl
+n*0≡0 (suc n) = n*0≡0 n
+
+-- *-comm : ∀(m n : ℕ) → m * n ≡ n * m
+-- *-comm zero n = sym (n*0≡0 n)
 
 -- show that zero ∸ n ≡ zero
 
-∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
+zero∸n : (n : ℕ) → (zero ∸ n) ≡ zero
+zero∸n zero = refl
+zero∸n (suc zero) = refl
+zero∸n (suc (suc n)) = refl
+
+-- or
+0∸n≡0 : ∀ n → 0 ∸ n ≡ 0
+0∸n≡0 zero = refl
+0∸n≡0 (suc n) = refl
+
+
+-- ∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
+-- ∸-+-assoc 
 
 -- +*^ : 
   -- show the three laws:  
@@ -278,5 +299,5 @@ _ =
 -- Bin-laws. Consider the following laws, where n ranges over naturals and b over bitstrings:
 -- from (inc b) ≡ suc (from b)
 -- to (from b) ≡ b
--- from (to n) ≡ n
+-- from (to n) ≡ n   
 -- if a law holds, prove. If not, give a counterexample.
