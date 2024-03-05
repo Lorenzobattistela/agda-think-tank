@@ -275,6 +275,57 @@ n*0≡0 (suc n) = n*0≡0 n
 -- *-comm zero n = sym (n*0≡0 n)
 
 -- show that zero ∸ n ≡ zero
+0∸n≡0 : ∀ n → (zero ∸ n) ≡ 0
+0∸n≡0 zero = refl
+0∸n≡0 (suc n) =
+  begin
+    zero ∸ (suc n)
+  ≡⟨⟩
+    zero
+  ∎  
+
+∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
+∸-+-assoc m zero p =
+  begin
+    m ∸ zero ∸ p
+  ≡⟨⟩
+    m ∸ p
+  ≡⟨⟩
+    m ∸ (zero + p)
+  ∎
+
+∸-+-assoc m n zero =
+  begin
+    m ∸ n ∸ zero
+  ≡⟨⟩
+    m ∸ n 
+  ≡⟨⟩
+    m ∸ (zero + n)
+  ≡⟨ cong (m ∸_) (+-comm zero n) ⟩
+    m ∸ (n + zero)
+  ∎ 
+
+∸-+-assoc zero n p =
+  begin
+    zero ∸ n ∸ p
+  ≡⟨ cong (_∸ p) (0∸n≡0 n)⟩
+    zero ∸ p 
+  ≡⟨ 0∸n≡0 p ⟩
+    zero
+  ≡⟨ sym (0∸n≡0 (n + p)) ⟩
+    zero ∸ (n + p)
+  ∎
+
+∸-+-assoc (suc m) (suc n) p =
+  begin
+    (suc m) ∸ (suc n) ∸ p
+  ≡⟨⟩
+    m ∸ n ∸ p
+  ≡⟨ ∸-+-assoc m n p ⟩
+    m ∸ (n + p)
+  ≡⟨⟩
+    (suc m) ∸ ((suc n) + p)
+  ∎
 
 zero∸n : (n : ℕ) → (zero ∸ n) ≡ zero
 zero∸n zero = refl
@@ -282,13 +333,9 @@ zero∸n (suc zero) = refl
 zero∸n (suc (suc n)) = refl
 
 -- or
-0∸n≡0 : ∀ n → 0 ∸ n ≡ 0
-0∸n≡0 zero = refl
-0∸n≡0 (suc n) = refl
-
-
--- ∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
--- ∸-+-assoc 
+-- 0∸n≡0 : ∀ n → 0 ∸ n ≡ 0
+-- 0∸n≡0 zero = refl
+-- 0∸n≡0 (suc n) = refl
 
 -- +*^ : 
   -- show the three laws:  
@@ -300,4 +347,4 @@ zero∸n (suc (suc n)) = refl
 -- from (inc b) ≡ suc (from b)
 -- to (from b) ≡ b
 -- from (to n) ≡ n   
--- if a law holds, prove. If not, give a counterexample.
+-- if a law holds, prove. If not, give a counterexample. 
