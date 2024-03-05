@@ -485,9 +485,172 @@ zero∸n (suc (suc n)) = refl
   ∎
 
 --  (m ^ n) ^ p ≡ m ^ (n * p)        (^-*-assoc)
+^-*-assoc : ∀ (m n p : ℕ) → (m ^ n) ^ p ≡ m ^ (n * p)
+^-*-assoc m n zero = 
+  begin
+    (m ^ n) ^ zero
+  ≡⟨⟩
+    1
+  ≡⟨⟩
+    m ^ (zero * n)
+  ≡⟨ cong (m ^_) (*-comm zero n) ⟩
+    m ^ (n * zero)
+  ∎
+
+--  (m ^ n) ^ p ≡ m ^ (n * p)  
+^-*-assoc m n (suc p) =
+  begin
+    (m ^ n) ^ (suc p)
+  ≡⟨⟩
+    (m ^ n) * ((m ^ n) ^ p)
+  ≡⟨ cong ((m ^ n) *_) (^-*-assoc m n p) ⟩
+    (m ^ n) * (m ^ (n * p))
+  ≡⟨ sym (^-distribˡ-+-* m n (n * p)) ⟩
+    m ^ (n + (n * p))
+  ≡⟨ cong (λ p*n → m ^ (n + p*n)) (*-comm n p) ⟩
+    m ^ (n + (p * n))
+  ≡⟨⟩
+    m ^ ((suc p) * n)
+  ≡⟨ cong (m ^_) (*-comm (suc p) n) ⟩
+    m ^ (n * (suc p))
+  ∎
+
+-- -----------------
+data Bin : Set where
+  ⟨⟩ : Bin
+  _O : Bin → Bin
+  _I : Bin → Bin
+
+inc : Bin → Bin
+inc ⟨⟩ = ⟨⟩ I
+inc (_O n) = _I n
+inc (_I n) = _O (inc n)
+
+to : ℕ → Bin
+to zero = ⟨⟩
+to (suc x) = inc (to x)
+
+from : Bin → ℕ
+from ⟨⟩ = zero
+from (x O) = 2 * from(x)
+from (x I) = 2 * from(x) + 1
+
+2*n≡n+n : ∀ (n : ℕ) → 2 * n ≡ n + n
+2*n≡n+n n =
+  begin
+    2 * n
+  ≡⟨⟩
+    n + (1 * n)
+  ≡⟨⟩
+    n + (n + (0 * n))
+  ≡⟨⟩
+    n + (n + 0)
+  ≡⟨ cong (n +_) (+-identityʳ n) ⟩
+    n + n
+  ∎
+
++-suc-suc : ∀ (m n : ℕ) → (suc m) + (suc n) ≡ suc (suc (m + n))
++-suc-suc m n =
+  begin
+    (suc m) + (suc n)
+  ≡⟨ +-suc (suc m) n ⟩
+    suc ((suc m) + n)
+  ≡⟨ cong suc (sym (+-assoc 1 m n)) ⟩
+    suc (suc (m + n))
+  ∎
 
 -- Bin-laws. Consider the following laws, where n ranges over naturals and b over bitstrings:
--- from (inc b) ≡ suc (from b)
--- to (from b) ≡ b
+-- n : ℕ  and b : Bin
+
+incBinEqSucNat : ∀(b : Bin) → from (inc b) ≡ suc (from b)
+incBinEqSucNat ⟨⟩ = 
+  begin
+    from (inc ⟨⟩)
+  ≡⟨⟩
+    from (⟨⟩ I)
+  ≡⟨⟩
+    suc zero
+  ≡⟨⟩
+    suc(from ⟨⟩)
+  ∎
+
+incBinEqSucNat (b O) =
+  begin
+    from (inc (b O))
+  ≡⟨⟩
+    from (b I)
+  ≡⟨⟩
+    2 * (from b) + 1
+  ≡⟨⟩
+   from (b O) + 1
+  ≡⟨ +-suc (from (b O)) zero ⟩
+    suc (from (b O) + zero)
+  ≡⟨ cong suc (+-identityʳ (from (b O))) ⟩
+    suc(from (b O))
+  ∎
+
+incBinEqSucNat (b I) =
+   begin
+    from (inc (b I))
+  ≡⟨⟩
+    from ((inc b) O)
+  ≡⟨⟩
+    2 * (from (inc b))
+  ≡⟨ cong (2 *_) (incBinEqSucNat b) ⟩
+    2 * (suc (from b))
+  ≡⟨ 2*n≡n+n (suc (from b)) ⟩
+    (suc (from b)) + (suc (from b))
+  ≡⟨ +-suc-suc (from b) (from b) ⟩
+    suc (suc ((from b) + (from b)))
+  ≡⟨ cong (λ 2*fromb → suc (suc 2*fromb)) (sym (2*n≡n+n (from b))) ⟩
+    suc (suc (2 * (from b)))
+  ≡⟨ cong suc (+-comm 1 (2 * (from b))) ⟩
+    suc (2 * (from b) + 1)
+  ≡⟨⟩
+    suc (from (b I))
+  ∎
+
+-- toFromEquiv : ∀ (b : Bin) → to (from b) ≡ b
+-- toFromEquiv ⟨⟩ = 
+--   begin
+--     to (from ⟨⟩)
+--   ≡⟨⟩
+--     to (zero)
+--   ≡⟨⟩
+--     ⟨⟩ -> not true because to (zero) is encoded in ⟨⟩ O
+--   ∎
+
+-- toFromEquiv (b O) = 
+--   begin 
+--     to (from (b O)) 
+--   ≡⟨⟩
+--     to (2 * (from b))
+--   ≡⟨⟩
+--     (b O)
+--   ∎
 -- from (to n) ≡ n   
 -- if a law holds, prove. If not, give a counterexample. 
+fromTo : ∀ (n : ℕ) → from (to n) ≡ n
+fromTo zero = 
+  begin
+    from (to zero)
+  ≡⟨⟩
+    from ( ⟨⟩ O )
+  ≡⟨⟩
+    2 * (from ⟨⟩)
+  ≡⟨⟩
+    2 * zero
+  ≡⟨⟩
+    zero
+  ∎
+
+fromTo (suc n) = 
+  begin
+    from (to (suc n))
+  ≡⟨⟩
+    from (inc (to n))
+  ≡⟨ incBinEqSucNat (to n) ⟩
+    suc (from (to n))
+  ≡⟨ cong suc (fromTo n) ⟩
+    (suc n)
+  ∎
