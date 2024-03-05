@@ -337,9 +337,42 @@ zero∸n (suc (suc n)) = refl
 -- 0∸n≡0 zero = refl
 -- 0∸n≡0 (suc n) = refl
 
+*-identityˡ : ∀ (n : ℕ) → 1 * n ≡ n
+*-identityˡ zero    = refl
+*-identityˡ (suc n) =
+  begin
+    1 * (suc n)
+  ≡⟨⟩
+    (suc n) + (zero * (suc n))
+  ≡⟨⟩
+    (suc n) + zero
+  ≡⟨ +-identityʳ (suc n) ⟩
+    (suc n)
+  ∎
+
 -- +*^ : 
   -- show the three laws:  
 -- m ^ (n + p) ≡ (m ^ n) * (m ^ p)  (^-distribˡ-+-*)
+^-distribˡ-+-* : ∀ (m n p : ℕ) → m ^ (n + p) ≡ (m ^ n) * (m ^ p)
+^-distribˡ-+-* m zero p =
+  begin
+    m ^ (zero + p)
+  ≡⟨⟩
+    m ^ p
+  ≡⟨ sym (*-identityˡ (m ^ p)) ⟩
+    1 * (m ^ p)
+  ≡⟨⟩
+    (m ^ zero) * (m ^ p)
+  ∎
+
+^-distribˡ-+-* zero (suc n) p = 
+  begin 
+    zero ^ ((suc n) + p)
+  ≡⟨⟩
+    (zero ^ (suc n)) * (zero ^ p)
+  ≡⟨⟩    
+
+
 --  (m * n) ^ p ≡ (m ^ p) * (n ^ p)  (^-distribʳ-*)
 --  (m ^ n) ^ p ≡ m ^ (n * p)        (^-*-assoc)
 
