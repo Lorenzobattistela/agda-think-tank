@@ -107,6 +107,8 @@ inv-z≤n z≤n = refl
 -- The technique of induction on evidence that a property holds (e.g., inducting on evidence that m ≤ n)—rather than induction on values of which the property holds (e.g., inducting on m)—will turn out to be immensely valuable, and one that we use often.
 
 -- anti-symmetry
+-- proof by induction over the evidence that m <= n and n m <= n holds
+-- in the base case, both inequalities hold by z<= n, and so we're given zero <= zero and zero <= zero and must show zero ≡ zero, which follows by reflexivity.
 ≤-antisym : ∀ {m n : ℕ}
   → m ≤ n
   → n ≤ m
@@ -114,4 +116,40 @@ inv-z≤n z≤n = refl
   → m ≡ n
 ≤-antisym z≤n       z≤n        =  refl
 ≤-antisym (s≤s m≤n) (s≤s n≤m)  =  cong suc (≤-antisym m≤n n≤m)
+
+-- The above proof omits cases where one argument is z≤n and one argument is s≤s. Why is it ok to omit them?
+-- because there is only one way to a num to be <= 0 in nats, n ≡ 0
+
+-- Total
+-- for any nats m and n, either m<=n or n<=m or m is equal to n
+-- evidence that Total m n holds is either on the form forward m<=n or flipped n<=m where m<=n and n<=m are evidence of m<=n and n<=m respectively.
+-- the above definition could also be written as a disjunction (logical or)
+-- total is our first use of a datatype with parameters (m and n) which is equivalent to say:
+-- data Total : ℕ → ℕ → Set where 
+-- and then use m and n inside a forall
+-- ∀ {m n : ℕ }
+-- each param of the type translates as an implicit param of each constructor. Unlike an indexed datatype, where the index can vary (as in zero <= n and suc m <= n), in a parametrised datatype the params must always be the same (as in Total m n).
+data Total (m n : ℕ) : Set where
+
+  forward :
+      m ≤ n
+      ---------
+    → Total m n
+
+  flipped :
+      n ≤ m
+      ---------
+    → Total m n
+
+-- now we can specifiy and prove totality
+≤-total : ∀ (m n : ℕ) → Total m n
+≤-total zero n = forward z≤n 
+≤-total (suc m) zero = flipped z≤n 
+≤-total (suc m) (suc n) with ≤-total m n 
+...                       | forward m≤n = forward(s≤s m≤n)
+...                       | flipped n≤m = flipped(s≤s n≤m)
+
+-- in the first base case, if the first arg is zero and second is n, then the forward case holds, with z<=n as evidence that zero <= n
+-- in the second base case, if the first arg is suc m and the second arg is zero, then the flipped case holds, with z<=n as evidence that zero<=suc m
+-- 
 
