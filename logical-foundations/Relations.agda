@@ -151,5 +151,33 @@ data Total (m n : ℕ) : Set where
 
 -- in the first base case, if the first arg is zero and second is n, then the forward case holds, with z<=n as evidence that zero <= n
 -- in the second base case, if the first arg is suc m and the second arg is zero, then the flipped case holds, with z<=n as evidence that zero<=suc m
--- 
+-- in the inductive case: if the first arg is suc m and the second argument is suc n, then the inductive hypothesis <=-total m n establishes one of the following
+--  the forward case of the inductive hypothesis holds with m<=n as evidence that m<=n from which it follows that the forward case of the proposition holds with s<=s m<=n as evidence that suc m <= suc n
+-- the flipped case of the inductive hypothesis holds with n<=m as evidence that n <= m, from which it follows that the flipped case of the proposition holds with s<=s n<=m as evidence that suc n <= suc m.
 
+-- this is the first time we use the 'with' clause in Agda. The keyword with is followed by an expression and one or more subsequent lines. Each line begins with an ellipsis (...) and a vertical bar (|), followed by a pattern to be matched against the expression and the right-hand side of the equation.
+
+-- every use of with is equivalent to defining a helper function. FOr example, the definition above is equivalent to:
+≤-total′ : ∀ (m n : ℕ) → Total m n
+≤-total′ zero    n        =  forward z≤n
+≤-total′ (suc m) zero     =  flipped z≤n
+≤-total′ (suc m) (suc n)  =  helper (≤-total′ m n)
+  where
+  helper : Total m n → Total (suc m) (suc n)
+  helper (forward m≤n)  =  forward (s≤s m≤n)
+  helper (flipped n≤m)  =  flipped (s≤s n≤m)
+
+-- This is also the first use of a where clause in Agda. The keyword where is followed by one or more definitions, which must be indented. Any variables bound on the left-hand side of the preceding equation (in this case, m and n) are in scope within the nested definition, and any identifiers bound in the nested definition (in this case, helper) are in scope in the right-hand side of the preceding equation.
+
+-- if both arguments are equal, then both cases hold and we could return evidence of either. In the code above we return the forward case, but there is a variant that returns the flipped case:
+≤-total″ : ∀ (m n : ℕ) → Total m n
+≤-total″ m       zero                      =  flipped z≤n
+≤-total″ zero    (suc n)                   =  forward z≤n
+≤-total″ (suc m) (suc n) with ≤-total″ m n
+...                         | forward m≤n  =  forward (s≤s m≤n)
+...                         | flipped n≤m  =  flipped (s≤s n≤m)
+
+
+-- Monotonicity
+
+-- If one 
