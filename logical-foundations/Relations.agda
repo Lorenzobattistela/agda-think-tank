@@ -2,8 +2,8 @@ module logical-foundations.Relations where
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong)
-open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.Nat.Properties using (+-comm; +-identityʳ)
+open import Data.Nat using (ℕ; zero; suc; _+_;_*_)
+open import Data.Nat.Properties using (+-comm; +-identityʳ;*-comm)
 
 -- defining the relation less than or equal:
 -- z≤n --------
@@ -180,4 +180,88 @@ data Total (m n : ℕ) : Set where
 
 -- Monotonicity
 
--- If one 
+-- We can check if an operator is monotonic with regard to the ordering. For example, addition is monotonic with regard to inequality, meaning:
+-- ∀ {m n p q : ℕ} → m <= n → m + p <= n + q 
+-- we proof this by breaking the proof into three parts. First, dealing with the special case of showing addition is monotnic on the right
+
+-- induction on the first arg
+-- in the base case, first arg is zero and simplifies to p<=q, the evidence for which is given by the arg p≤q
+-- in the inductive case, first arg is suc n in which case suc n + p ≤ suc n + q simplifies to suc(n + p) ≤ n + q. THe inductive hypothesis +-monoʳ-≤ n p q p≤q establishes that n + p ≤ n + q and our goal follows by applying s≤s .
++-monoʳ-≤ : ∀ (n p q : ℕ)
+  → p ≤ q 
+    ------------ 
+  → n + p ≤ n + q
++-monoʳ-≤ zero p q p≤q = p≤q 
++-monoʳ-≤ (suc n) p q p≤q = s≤s (+-monoʳ-≤ n p q p≤q)
+
+
+-- now we deal with the special case of showing addition is monotonic on the left. This follows from the previous result and commutativity of addition
++-monoˡ-≤ : ∀ (m n p : ℕ)
+  → m ≤ n
+    -------------
+  → m + p ≤ n + p
++-monoˡ-≤ m n p m≤n  rewrite +-comm m p | +-comm n p  = +-monoʳ-≤ p m n m≤n
+-- rewriting by +-comm m p and +-comm n p converts m + p <= n + p into p + m <= p + n, which is proved by invoking mono right.
+
+-- and third, we combine the two previous results
++-mono-≤ : ∀ (m n p q : ℕ)
+  → m ≤ n
+  → p ≤ q
+    -------------
+  → m + p ≤ n + q
++-mono-≤ m n p q m≤n p≤q  =  ≤-trans (+-monoˡ-≤ m n p m≤n) (+-monoʳ-≤ n p q p≤q)
+-- invoking mono left proves m + p <= n + p and invoking mono right proves n + p <= n + q and combining these with transitivity proves m + p <= n + q as was to be shown.
+
+-- Exercise *-mono-≤ : show that multiplication is monotonic with regard to inequality
+*-monoʳ-≤ : ∀ (n p q : ℕ)
+  → p ≤ q 
+    ------------ 
+  → n * p ≤ n * q 
+*-monoʳ-≤ zero p q z≤z = z≤n
+*-monoʳ-≤ (suc n) p q p≤q = +-mono-≤ p q (n * p) (n * q) p≤q (*-monoʳ-≤ n p q p≤q)
+
+
+*-monoˡ-≤ : ∀ (m n p : ℕ)
+  → m ≤ n
+    ------------- 
+  → m * p ≤ n * p
+*-monoˡ-≤ m n p m≤n rewrite *-comm m p | *-comm n p = *-monoʳ-≤ p m n m≤n
+
+*-mono-≤ : ∀ (m n p q : ℕ)
+  → m ≤ n 
+  → p ≤ q 
+    ------------ 
+  → m * p ≤ n * q 
+*-mono-≤ m n p q m≤n p≤q = ≤-trans (*-monoˡ-≤ m n p m≤n) (*-monoʳ-≤ n p q p≤q)
+
+
+-- Strict Inequality
+infix 4 _<_
+
+data _<_ : ℕ → ℕ → Set where
+
+  z<s : ∀ {n : ℕ}
+      ------------
+    → zero < suc n 
+  
+  s<s : ∀ {m n : ℕ}
+    → m < n 
+      -----------
+    → suc m < suc n
+
+-- the key difference is that zero is less than the successor of an arbitrary number but is not less than zero
+-- clearly, strict inequality is not reflexive. HOwever, it is irreflexive in that n < n never holds for any n. Strict inequality is transitive, but not total. BUt satisfies the closely related property of trichotomy: for any m and n, exactly one of m < n, m≡n or m>n holds. It is also monotonic with regards to addition and multiplication.
+
+
+-- show that strict inequality is transitive;
+-- <-trans
+
+-- show that strict inequality satisfies a weak version of trichotomy in the sense that for any m and n that one of the following holds: m < n, m ≡ n or m > n
+
+-- define m > n to be the same as n < m. You'll ned a suitable data declaration similar to that used for totality.
+
+-- +-mono-< show that addition is monotonic with respect to strict inequality.
+
+-- ≤→<, <→≤  show that suc m ≤ n implies m < n and conversely
+
+-- <-trans-revisited : give an alternative proof that strict inequality is transitive using the relaiton between strict inequality and inequality and the fact that inequality is transitive
