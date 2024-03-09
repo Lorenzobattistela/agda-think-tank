@@ -250,7 +250,7 @@ data _<_ : ℕ → ℕ → Set where
     → suc m < suc n
 
 -- the key difference is that zero is less than the successor of an arbitrary number but is not less than zero
--- clearly, strict inequality is not reflexive. HOwever, it is irreflexive in that n < n never holds for any n. Strict inequality is transitive, but not total. BUt satisfies the closely related property of trichotomy: for any m and n, exactly one of m < n, m≡n or m>n holds. It is also monotonic with regards to addition and multiplication.
+-- clearly, strict inequality is not reflexive. However, it is irreflexive in that n < n never holds for any n. Strict inequality is transitive, but not total. But satisfies the closely related property of trichotomy: for any m and n, exactly one of m < n, m≡n or m>n holds. It is also monotonic with regards to addition and multiplication.
 
 
 -- show that strict inequality is transitive;
@@ -265,3 +265,57 @@ data _<_ : ℕ → ℕ → Set where
 -- ≤→<, <→≤  show that suc m ≤ n implies m < n and conversely
 
 -- <-trans-revisited : give an alternative proof that strict inequality is transitive using the relaiton between strict inequality and inequality and the fact that inequality is transitive
+
+-- Even and Odd
+data even : ℕ → Set
+data odd  : ℕ → Set
+
+-- a num is even if it is zero or the successor of an odd number
+data even where 
+  zero : 
+    -----------
+    even zero
+  
+  suc : ∀ {n : ℕ}
+    → odd n 
+      ------------ 
+    → even (suc n)
+ -- a number is odd if it is the successor of an even number 
+data odd where
+  suc : ∀ {n : ℕ}
+    → even n 
+      ----------- 
+    → odd (suc n)
+  
+
+-- this is our first use of a mutually recursive datatype declaration. Each identifier must be defined before it is used, we first declare the indexed types even and odd and then declare the constructors.
+-- This is also the first use of overloaded constructors, using the same name for constructors of different types.
+
+-- we show that the sum of two even numbers is even
+e+e=e : ∀ {m n : ℕ}
+  → even m 
+  → even n 
+  ------------ 
+  → even (m + n)
+
+o+e=o : ∀ {m n : ℕ}
+  → odd m 
+  → even n 
+  -------------- 
+  → odd (m + n)
+
+e+e=e zero en = en 
+e+e=e (suc om) en = suc (o+e=o om en)
+o+e=o (suc em) en = suc (e+e=e em en)
+
+-- we use two mutually recursive functions, one to show that the sum of two even numbers ie even and the other to show that the sum of an odd and an even number is odd. 
+-- To show that the sum of two even numbers is even, consider the evidence that the first number is even. If it is because it is zero, then the sum is even ebcause the second number is even. If it is because it is the successor of an odd number then the reuslt is even because it is the successor of the sum of an odd and an even number, which is odd.
+-- To show that the sum of an odd and even number is odd, consider the evidence that the first number is odd. If it is because it is the successor of an even number, then the result is odd because it is the successor of the sum of two even numbers, which is even.
+
+-- o+o≡e
+-- o+o=e : ∀ {m n : ℕ}
+--   → odd m 
+--   → odd n 
+--   ------------ 
+--   → even (m + n)
+
