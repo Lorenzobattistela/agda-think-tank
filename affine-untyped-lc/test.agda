@@ -1,11 +1,12 @@
-module affine-untyped-lc.test where 
+module affine-untyped-lc.test where
 
-open import Data.Bool using (if_then_else_; Bool; true; false;_∧_)
-open import Data.Nat using (ℕ; zero; suc; _+_;_*_)
+open import Data.Bool using (if_then_else_; Bool; true; false; _∧_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≟_)
 open import Data.List using (List; _∷_; []; tail)
-open import Data.Product using (_×_;_,_;proj₁;proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl;inspect)
-
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Nullary using (Dec; yes; no)
+open import Induction.WellFounded using (Acc; acc)
 
 data Term : Set where
     var : ℕ → Term
@@ -62,14 +63,19 @@ not-affine-is-affine-check : not-affine-bool ≡ true
 not-affine-is-affine-check = refl
 
 
-data Affine : Context → Term → Set where
-    var-aff : ∀ {x ctx} → lookup x ctx ≡ true → Affine ctx (var x)
-    lam-aff : ∀ {t ctx} → Affine (true ∷ ctx) t → Affine ctx (lam t)
-    app-aff : ∀ {t u ctx ctx1 ctx2} → Affine ctx t →
-                                      Affine ctx1 u →
-                                      ctx1 ≡ proj₂ (affine ctx t) →
-                                      ctx2 ≡ proj₂ (affine ctx u) →
-                                      Affine ctx (app t u)
+data AffineTerm : Set where
+  var : (x : ℕ) → AffineTerm
+  lam : (t : AffineTerm) → AffineTerm
+  app : (t : AffineTerm) → (u : AffineTerm) → AffineTerm
 
+data IsAffine : AffineTerm → Set where
+  var : (x : ℕ) → IsAffine (var x)
+  lam : (t : AffineTerm) → (p : IsAffine t) → IsAffine (lam t)
+  app : (t : AffineTerm) → (u : AffineTerm) → (p₁ : IsAffine t) → (p₂ : IsAffine u) → IsAffine (app t u)
 
--- now we want to start working on normalization through substitution and ensure that after substitution it keeps affine.
+example : AffineTerm
+example = lam (var 0)
+
+example-is-affine : IsAffine example
+example-is-affine = lam (var 0) (var 0)
+
