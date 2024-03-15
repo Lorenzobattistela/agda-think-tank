@@ -1,12 +1,13 @@
 module affine-untyped-lc.test where
 
 open import Data.Bool using (if_then_else_; Bool; true; false; _∧_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≟_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≟_;_<_; _≤_)
 open import Data.List using (List; _∷_; []; tail)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 open import Induction.WellFounded using (Acc; acc)
+open import Data.Empty using (⊥; ⊥-elim)
 
 data Term : Set where
     var : ℕ → Term
@@ -62,20 +63,18 @@ not-affine-bool = proj₁ is_affine
 not-affine-is-affine-check : not-affine-bool ≡ true
 not-affine-is-affine-check = refl
 
+contradiction : ∀ {A : Set} {x y : Bool} → x ≡ true → x ≡ false → A
+contradiction refl ()
 
-data AffineTerm : Set where
-  var : (x : ℕ) → AffineTerm
-  lam : (t : AffineTerm) → AffineTerm
-  app : (t : AffineTerm) → (u : AffineTerm) → AffineTerm
+data Affine : Context → Term → Set where
+  var : ∀ {ctx x} → lookup x ctx ≡ true → Affine ctx (var x)
+  lam : ∀ {ctx t} → Affine (true ∷ ctx) t → Affine ctx (lam t)
+  app : ∀ {ctx t u} → Affine ctx t → Affine (proj₂ (affine ctx t)) u → Affine ctx (app t u)
 
-data IsAffine : AffineTerm → Set where
-  var : (x : ℕ) → IsAffine (var x)
-  lam : (t : AffineTerm) → (p : IsAffine t) → IsAffine (lam t)
-  app : (t : AffineTerm) → (u : AffineTerm) → (p₁ : IsAffine t) → (p₂ : IsAffine u) → IsAffine (app t u)
+-- affine-implies-Affine : ∀ {ctx t} → proj₁ (affine ctx t) ≡ true → Affine ctx t
+-- affine-implies-Affine {ctx} {var x} eq with lookup x ctx
+-- ... | true = var refl
+-- ... | false = contradiction eq refl
 
-example : AffineTerm
-example = lam (var 0)
 
-example-is-affine : IsAffine example
-example-is-affine = lam (var 0) (var 0)
-
+-- bound the size of the term by a natural number, show that β-reduction always strictly reduces the size of the term, and then do induction on the natural number bound to show termination.
