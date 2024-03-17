@@ -98,3 +98,18 @@ to∘from′ (mk-≃′ f g g∘f f∘g) = f∘g
 -- which corresponds to using the constructor of the corresponding inductive type
 -- mk-≃′ f g g∘f f∘g
 -- where f, g, g∘f, and f∘g are values of suitable types.
+
+-- isomorphism is an equivalence
+-- isomoprhism is reflexive, symmetric and transitive.
+≃-refl : ∀ {A : Set}
+    -----
+  → A ≃ A
+≃-refl =
+  record
+    { to      = λ{x → x}
+    ; from    = λ{y → y}
+    ; from∘to = λ{x → refl}
+    ; to∘from = λ{y → refl}
+    }
+
+-- in the above, to and from are both bound to identity function, and∘to and to∘from 
