@@ -107,7 +107,6 @@ _ =
     2 + (n + p)
   ∎
 
--- Univ quantifiers are used to associated variables are associated with each argument type, and the result type may mention (or depend upon) these variables; hence they are called dependent functions.
 
 -- Ordinary functions are just a special case of dependent functions. The signatures:
 -- _+_ : ℕ → ℕ → ℕ

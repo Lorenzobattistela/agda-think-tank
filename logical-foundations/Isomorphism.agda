@@ -2,6 +2,10 @@ module logical-foundations.Isomorphism where
 
 -- we introduce isomorphism as a way of asserting that two types are equal, and embedding as a way of asserting that one type is smaller than another. We apply isomorphisms in the next chapter to demonstrate that operations on types such as product and sum satisfy properties akind to associativity, commutativity and distributivity
 
+-- ISOMORPHISM: asserting that two types are equal 
+-- EMBEDDING: asserting that one type is smaller than another
+
+
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; cong-app)
 open Eq.≡-Reasoning
