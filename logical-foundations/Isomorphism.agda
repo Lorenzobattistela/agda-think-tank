@@ -301,10 +301,11 @@ open ≲-Reasoning
 -- Exercise _⇔_ (practice)
 -- Define equivalence of propositions (also known as “if and only if”) as follows:
 
--- record _⇔_ (A B : Set) : Set where
---   field
---     to   : A → B
---     from : B → A
+record _⇔_ (A B : Set) : Set where
+   field
+     to   : A → B
+     from : B → A
+open _⇔_
 
 -- Show that equivalence is reflexive, symmetric, and transitive.
 
