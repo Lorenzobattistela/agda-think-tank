@@ -344,6 +344,21 @@ currying =
   }
 
 
+⊎-distrib-× : ∀ {A B C : Set} → (A × B) ⊎ C ≲ (A ⊎ C) × (B ⊎ C)
+⊎-distrib-× =
+  record
+    { to      = λ{ (inj₁ ⟨ x , y ⟩) → ⟨ inj₁ x , inj₁ y ⟩
+                 ; (inj₂ z)         → ⟨ inj₂ z , inj₂ z ⟩
+                 }
+    ; from    = λ{ ⟨ inj₁ x , inj₁ y ⟩ → (inj₁ ⟨ x , y ⟩)
+                 ; ⟨ inj₁ x , inj₂ z ⟩ → (inj₂ z)
+                 ; ⟨ inj₂ z , _      ⟩ → (inj₂ z)
+                 }
+    ; from∘to = λ{ (inj₁ ⟨ x , y ⟩) → refl
+                 ; (inj₂ z)         → refl
+                 }
+    }
+
 
 
 
