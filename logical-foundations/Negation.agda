@@ -1,11 +1,11 @@
 module logical-foundations.Negation where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Data.Nat using (ℕ; zero; suc; _<_)
+open import Data.Nat
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_)
-open import logical-foundations.Isomorphism using (_≃_; extensionality)
+open import Data.Product 
+open import logical-foundations.Isomorphism using (_≃_; extensionality; _∘_)
 
 -- given A, the negation of A holds if A cannot hold. We formalise it by declaring negation to be the same as implication of false
 
@@ -92,26 +92,88 @@ assimilation ¬x ¬x′ = extensionality (λ x → ⊥-elim (¬x x))
 -- Exercise <-irreflexive
 -- Using negation, show that strict inequality is irreflexive, that is, n < n holds for no n
 
--- <-irreflexive : ∀ (n : ℕ) → ¬ (n < n)
--- <-irreflexive zero ()
--- <-irreflexive (suc n) (s<s n<n) = <-irreflexive n n<n
+-- proof by induction on N. In the base case, its impossible to construct a proof of zero < zero, so we use empty pattern
+-- inductive case n = suc(n). If we have a proof of suc n < suc n, it must have been constructed using the s<=constructor, which means that we have a proof of n < n. 
+<-irreflexive : ∀ (n : ℕ) → ¬ (n < n)
+<-irreflexive zero ()
+<-irreflexive (suc n) (s≤s n<n) = <-irreflexive n n<n
+
+-- data Trichotomy (m n : ℕ) : Set where
+--   less    : m < n → ¬ (m ≡ n) → ¬ (m > n) → Trichotomy m n
+--   equal   : m ≡ n → ¬ (m < n) → ¬ (m > n) → Trichotomy m n
+--   greater : m > n → ¬ (m ≡ n) → ¬ (m < n) → Trichotomy m n
+-- 
+-- -- Helper lemmas
+-- suc-injective : ∀ {m n} → suc m ≡ suc n → m ≡ n
+-- suc-injective refl = refl
+-- 
+-- ¬s≡z : ∀ {n} → ¬ (suc n ≡ zero)
+-- ¬s≡z ()
+-- 
+-- -- Main trichotomy proof
+-- trichotomy : ∀ m n → Trichotomy m n
+-- trichotomy zero zero = equal refl (λ ()) (λ ())
+-- trichotomy zero (suc n) = less z<s (λ ()) (λ ())
+-- trichotomy (suc m) zero = greater z<s (λ ()) (λ ())
+-- trichotomy (suc m) (suc n) with trichotomy m n
+-- ... | less m<n ¬m≡n ¬m>n =
+--   less (s<s m<n)
+--        (λ sm≡sn → ¬m≡n (suc-injective sm≡sn))
+--        (λ sn<sm → ¬m>n (λ n<m → n<m))
+-- ... | equal m≡n ¬m<n ¬m>n =
+--   equal (Eq.cong suc m≡n)
+--         (λ sm<sn → ¬m<n (λ m<n → m<n))
+--         (λ sn<sm → ¬m>n (λ n<m → n<m))
+-- ... | greater m>n ¬m≡n ¬m<n =
+--   greater (s<s m>n)
+--           (λ sm≡sn → ¬m≡n (suc-injective sm≡sn))
+--           (λ sm<sn → ¬m<n (λ m<n → m<n))
+-- 
 
 
+-- intuitive and classical logical
+-- Intuitionists, concerned by assumptions made by some logicians about the nature of infinity, insist upon a constructionist
+-- notion of truth. In particular, they insist that a proof of A ⊎ B must show chich of A or B holds
+-- Intuitionists also reject the law of the excluded middle, which asserts A ⊎ ¬A for every A, since the law gives
+-- no clue as to which of A or ¬ A holds. Heyting formalised a variant of Hilberts classical logic that
+-- captures the intuitionistic notion of provability. In particular, the law of the excluded middle is provable
+-- by hilberts, but no in heytings. 
+-- Propositions as types was first formulated for intuitionistic logic. It is a perfect fit, because in the intuitionist
+-- interpretation the formula A ⊎ B is provable exactly when one exhibits either a proof of A or a proof of B,
+-- so the type corresponding to the disjunction is a disjoint sum
+--
+-- Excluded middle is irrefutable
+
+postulate
+  em : ∀ {A : Set} → A ⊎ ¬ A
+-- it does not hold for intuitionistic, but we can show it is irrefutable (negation of its negation is provable)
+
+em-irrefutable : ∀ {A : Set} → ¬ ¬ (A ⊎ ¬ A)
+-- given evidence k that ¬ (A ⊎ ¬ A), that is, a function that given a value of type A ⊎ ¬ A returns a value of the empty type
+-- we must fill in ? with a term that returns a value of the empty type. The only way we can get a value of the empty type
+-- is by applying k itself:
+-- em-irrefutable k = k ?
+-- We need to fill the new hole with a value of type A ⊎ ¬ A. We dont have a value of type A to hand, so lets pick
+-- the second disjunct
+-- em-irrefutable k = k (inj₂ λ{x → ?})
+-- the second disjunc accepts evidence of ¬ A, that is, a function that given a value of type A returns a value of the empty type
+-- we bind x to the value o ftype A, and now we need to fill the hole with a value of the empty type
+-- Once again, the only way we can get a value of the empty type is by applying k itself, so lets expand the hole:
+-- em-irrefutable k = k (inj₂ λ{x → k ?})
+-- this time we do have a value of type A to hand, namely x, so we can pick the first disjunct
+em-irrefutable k = k (inj₂ (λ x → k (inj₁ x)))
+
+Stable : Set → Set
+Stable A = ¬ ¬ A → A
 
 
+negatedStable : ∀ {A : Set} → Stable (¬ A)
+negatedStable ¬¬¬a a = ¬¬¬a (λ ¬a → ¬a a)
 
-
-
-
-
-
-
-
-
-
-
-
-
+stableConjunction : ∀ {A B : Set} → Stable A → Stable B → Stable (A × B)
+stableConjunction stableA stableB ¬¬a×b =
+  stableA (λ ¬a → ¬¬a×b (λ a×b → ¬a (proj₁ a×b))) ,
+  stableB (λ ¬b → ¬¬a×b (λ a×b → ¬b (proj₂ a×b)))
 
 
 
