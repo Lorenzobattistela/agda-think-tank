@@ -32,6 +32,68 @@ open import Function using (_∘_)
 -- as evidence of a proposition that depends on the argument.
 -- Dependent function types are sometimes referred to as dependent products.
 
+-- show that universals distribute over conjunction:
+-- postulate
+  -- ∀-distrib-× : ∀ {A : Set} {B C : A → Set} →
+    --(∀ (x : A) → B x × C x) ≃ (∀ (x : A) → B x) × (∀ (x : A) → C x)
+
+
+-- Existentials
+-- Given a variable x of type A and a proposition B x which contains x as a free variable, the existentially quantified
+-- proposition ∑[ x ∈ A ] B x holds if for some term M of type A the proposition B M holds. Here B M stands for the proposition
+-- B x but bound in ∑ [ x ∈ A ] B x
+
+data ∑ (A : Set) (B : A → Set) : Set where
+  ⟨_,_⟩ : (x : A) → B x → ∑ A B
+
+∑-syntax = ∑
+infix 2 ∑-syntax
+-- this is our first use of a syntax declaration, specifying that the term on the left may be written with the syntax on the right
+-- evidence that ∑[ x ∈ A] B x holds is of the form ⟨ M , N ⟩ where M is a term of type A, and N is evidence that B M holds
+syntax ∑-syntax A (λ x → Bx) = ∑ [ x ∈ A ] Bx
+
+-- also possible to declare using record types
+record ∑′ (A : Set) (B : A → Set) : Set where
+  field
+    proj₁′ : A
+    proj₂′ : B proj₁′ 
+
+-- products arise as a special case of existentials, where the second component does not depend on a variable drawn from the first 
+-- component. When a product is viewed as evidence of a conjunction, both of its components are viewed as evidence, whereas when
+-- it is viewed as evidence of an existential, the first component is viewed as an element of a datatype and the second component
+-- is viewed as evidence of a proposition that depends on the first component. 
+
+∃ : ∀ {A : Set} (B : A → Set) → Set
+∃ {A} B = ∑ A B
+
+∃-syntax = ∃
+syntax ∃-syntax (λ x → B) = ∃[ x ] B
+
+-- if we know that vor every x of type A that B x implies C, and we know for some x of type A that B x holds, then we
+-- may conclude that C holds.
+∃-elim : ∀ {A : Set} {B : A → Set} {C : Set}
+  → (∀ x → B x → C)
+  → ∃[ x ] B x
+    ----------------
+  → C
+∃-elim f ⟨ x , y ⟩ = f x y
+
+-- the converse also holds and the two together form an isomorphism
+∀∃-currying : ∀ {A : Set} {B : A → Set} {C : Set}
+  → (∀ x → B x → C) ≃ (∃[ x ] B x → C)
+∀∃-currying =
+  record
+    { to        = λ{ f → λ{ ⟨ x , y ⟩ → f x y }}
+    ; from      = λ{ g → λ{ x → λ{ y → g ⟨ x , y ⟩ }}}
+    ; from∘to   = λ{ f → refl }
+    ; to∘from   = λ{ g → extensionality λ{ ⟨ x , y ⟩ → refl }}
+    }
+
+
+
+
+
+
 
 
 
