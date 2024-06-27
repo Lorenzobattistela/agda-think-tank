@@ -90,11 +90,65 @@ syntax ∃-syntax (λ x → B) = ∃[ x ] B
     }
 
 
+-- an existential example
+-- definitions of even and odd from Relations:
+data even : ℕ → Set
+data odd  : ℕ → Set
 
+data even where
 
+  even-zero : even zero
 
+  even-suc : ∀ {n : ℕ}
+    → odd n
+      ------------
+    → even (suc n)
 
+data odd where
+  odd-suc : ∀ {n : ℕ}
+    → even n
+      -----------
+    → odd (suc n)
 
+-- we will show that even n iff ∃[ m ] (m * 2 ≡ n) and odd for 1 + m * 2 ≡ 1
+even-∃ : ∀ {n : ℕ} → even n → ∃[ m ] (  m * 2 ≡ n)
+odd-∃ : ∀ {n : ℕ} → odd n → ∃[ m ] (1 + m * 2 ≡ n)
+
+even-∃ even-zero                     = ⟨ zero , refl ⟩
+even-∃ (even-suc o) with odd-∃ o
+...                   | ⟨ m , refl ⟩ = ⟨ suc m , refl ⟩
+
+odd-∃ (odd-suc e)   with even-∃ e
+...                   | ⟨ m , refl ⟩ = ⟨ m , refl ⟩ 
+-- by defining two mutually recursive functions. Given evidence that n is even or odd, we return a number m and evidence that m * 2 = n or 1 + m * 2 = n. We induct over the evidence that n is even or odd.
+-- if the number is even because it is zero, we return a pair consisting of zero and the evidence that twice zero is zero
+-- if the number is even cause it is one more than an odd number, we apply induction hypothesis to give a number m and evidence that 1 + m * 2 = n. We return a pair consisting of suc m and evidence that suc m * 2 = suc , which is immediate after substituting for n
+-- if the number is odd cause its succ of even, we apply induction hypothesis to give a number m and evidence that m * 2 = n. We return a pair consisting of m and evidence that 1 + m * 2 = suc n
+
+-- the proof in the reverse direction:
+∃-even : ∀ {n : ℕ} → ∃[ m ] (    m * 2 ≡ n) → even n
+∃-odd  : ∀ {n : ℕ} → ∃[ m ] (1 + m * 2 ≡ n) →  odd n
+
+∃-even ⟨  zero , refl ⟩  =  even-zero
+∃-even ⟨ suc m , refl ⟩  =  even-suc (∃-odd ⟨ m , refl ⟩)
+
+∃-odd  ⟨     m , refl ⟩  =  odd-suc (∃-even ⟨ m , refl ⟩)
+
+-- existentials- universals and negation
+-- Negation of an existential is isomorphic to the universal of a negation. Considering that existentials are generalised disjunction
+-- and universals are generalised conjunction, this result is analogous to the one which tells us that negation of a disjunction is isomorphic to a conjunction of negations:
+¬∃≡∀¬ : ∀ {A : Set} {B : A → Set}
+  → (¬ ∃[ x ] B x) ≃ ∀ x → ¬ B x
+¬∃≡∀¬ =
+  record
+    { to      = λ{ ¬∃xy x y → ¬∃xy ⟨ x , y ⟩ }
+    ; from    = λ{ ∀¬xy ⟨ x , y ⟩ → ∀¬xy x y }
+    ; from∘to = λ{ ¬∃xy → extensionality λ{ ⟨ x , y ⟩ → refl } }
+    ; to∘from = λ{ ∀¬xy → refl }
+    }
+-- In the to direction, we are given a value ¬∃xy of type ¬ ∃[ x ] B x, and need to show that given a value x that ¬ B x follows, in other words, from a value y of type B x we can derive false. Combining x and y gives us a value ⟨ x , y ⟩ of type ∃[ x ] B x, and applying ¬∃xy to that yields a contradiction.
+-- In the from direction, we are given a value ∀¬xy of type ∀ x → ¬ B x, and need to show that from a value ⟨ x , y ⟩ of type ∃[ x ] B x we can derive false. Applying ∀¬xy to x gives a value of type ¬ B x, and applying that to y yields a contradiction.
+-- The two inverse proofs are straightforward, where one direction requires extensionality.
 
 
 
