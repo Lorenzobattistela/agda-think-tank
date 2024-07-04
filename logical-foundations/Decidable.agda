@@ -145,30 +145,120 @@ suc m ≤? suc n with m ≤? n
 ...         | yes m≤n  = yes (s≤s m≤n)
 ...         | no ¬m≤n  = no (¬s≤s ¬m≤n)
 
+-- exercise _<?_
 
 
+-- Erasure takes a decidable value to a boolean:
+[_] : ∀ {A : Set} → Dec A → Bool
+[ yes x ] = true
+[ no ¬x ] = false
+
+-- using erasure, its easy to derive _≤ᵇ_ from _≤?_
+_≤ᵇ′_ : ℕ → ℕ → Bool
+m ≤ᵇ′ n = [ m ≤? n ]
+
+-- further, if D is a value of type Dec A, then T [ D ] is inhabited exactly when A is inhabited
+--(remembering that inhabited refers to a type that has at least one value or element)
+toWitness : ∀ {A : Set} {D : Dec A} → T [ D ] → A
+toWitness {A} {yes x} tt = x
+toWitness {A} {no ¬x} ()
+
+fromWitness : ∀ {A : Set} {D : Dec A} → A → T [ D ]
+fromWitness {A} {yes x} _ = tt
+fromWitness {A} {no ¬x} x = ¬x x
+
+-- and using these, we can easily derive that T (m ≤ᵇ′ n) is inhabited exactly when m ≤ n is inhabited:
+≤ᵇ′→≤ : ∀ {m n : ℕ} → T (m ≤ᵇ′ n) → m ≤ n
+≤ᵇ′→≤ = toWitness
+
+≤→≤ᵇ′ : ∀ {m n : ℕ} → m ≤ n → T (m ≤ᵇ′ n)
+≤→≤ᵇ′ = fromWitness
+
+-- Logical Connectives
+-- Each one extends to decidables:
+infixr 6 _∧_
+_∧_ : Bool → Bool → Bool
+true ∧ true = true
+false ∧ _   = false
+_ ∧ false   = false
+
+-- correspondingly, given two decidable propositions, we can decide their conjunction:
+infixr 6 _×-dec_
+
+-- the conjunction of two propositons hold if they both hold, and its negation holds if the negation of either holds.
+-- If both hold, we pair the evidence for each to yield evidence of the conjunct
+-- If the negation of either holds, assuming the conjunct will lead to a contradiction.
+_×-dec_ : ∀ {A B : Set} → Dec A → Dec B → Dec (A × B)
+yes x ×-dec yes y = yes ⟨ x , y ⟩
+no ¬x ×-dec _     = no λ{ ⟨ x , y ⟩ → ¬x x }
+_     ×-dec no ¬y = no λ{ ⟨ x , y ⟩ → ¬y y }
 
 
+infixr 5 _v_
+
+_v_ : Bool → Bool → Bool
+true v _      = true
+_    v true   = true
+false v false = false
+
+-- correspondingly, given two decidable propositions we can decide their disjunction
+infixr 5 _⊎-dec_
+
+-- the disjunction of two propositions holds if either holds, and its negation holds if the negation of both hold. If either holds, we inject the evidence to yield evidence of the disjunct.
+-- If the negation of both hold, assuming either disjunct will lead to a contradiction.
+_⊎-dec_ : ∀ {A B : Set} → Dec A → Dec B → Dec (A ⊎ B)
+yes x ⊎-dec _     = yes (inj₁ x)
+_     ⊎-dec yes y = yes (inj₂ y)
+no ¬x ⊎-dec no ¬y = no λ{ (inj₁ x) → ¬x x ; (inj₂ y) → ¬y y }
+
+not : Bool → Bool
+not true = false
+not false = true
+
+-- just swap yes and no
+¬? : ∀ {A : Set} → Dec A → Dec (¬ A)
+¬? (yes x) = no (¬¬-intro x)
+¬? (no ¬x) = yes ¬x
+
+_⊃_ : Bool → Bool → Bool
+_     ⊃ true  = true
+false ⊃ _     = true
+true  ⊃ false = false
+
+-- we can decide if the first implies the second
+-- the implication holds if either the second hols or the negation of the first holds, and its negation holds if the first holds
+-- and the negation of the seoncd holds. Evidence for the implication is a function from evidence of the first to evidence of the second. If the second holds, the funciton returns the evidence for it. If the negation of the first holds, the function takes the evidence of the first and derives a contradiction. If the first holds and the negation of the secon d holds, given evidence of the implication we must derive a contradiction; we apply the evidence of the implication f to the evidence of the first x, yielding a contradictiion with the evidence ¬y of the negation of the second
+_→-dec_ : ∀ {A B : Set} Dec A → Dec B → Dec (A → B)
+_  →-dec yes y = yes (λ _ → y)  
+no ¬x →-dec _  = yes (λ x → ⊥-elim (¬x x))
+yes x →-dec no ¬y = no (λ f → ¬y (f x)) 
 
 
+-- Proof by Reflection: Lets revisit the monus definition from Naturals. If subtracting a larger number from a smaller, we take the result to 0. We could have defined a guarded version of minus, a function which subtracts n from m only if n ≤ m:
+minus : (m n : ℕ) (n≤m : n ≤ m) → ℕ
+minus m zero _ = m
+minus (suc m) (suc n) (s≤s n≤m) = minus m n n≤m
+-- but this is painful to use:
+_ : minus 5 3 (s≤s (s≤s (s≤s z≤n))) ≡ 2
+_ = refl
 
+-- we cant solve this in general, but in the scenario above we happen to know the two numbers statically. In that case, we can use a technique called proof by reflection. Essentially, we can ask agda to run the decidable equality n ≤? m while type checking and make sure n ≤ m!
+-- We do this through the use of implicits. Agda will fill in an implicit of a record type if it can fill in all its fields. So Agda will always manage to fill in an implicit of an empty record type, since there are not any fields. This is why T is defined as an empty record.
+-- The trick is to have an implicit arg of type T [ n ≤? m ]. What this means?
+-- First, we run the decision procedure, n≤?m, which provides us evidence wether n≤m holds or not. We erase the evidence to a boolean. Finally, we apply T. Recall that T maps booleans into the world of evidence: true becomes the unit type T, and false becomes the empty type ⊥. Operationally, an implicit arg of this type works as a guard.
+-- If n <= m holds, the type of the implicit value reduces to T. Agda then provides the implicit value.
+-- Otherwise, the type reduces to ⊥ which Agda has no chance of providing, so it will throw an error. 
+-- We obtain the witness for n <= m using toWitness, which we defined earlier:
+_-_ : (m n : ℕ) {n≤m : T [ n ≤? m ]} → ℕ
+_-_ m n {n≤m} = minus m n (toWitness n≤m)
 
+-- now we can safely use _-_ as long as we know the two numbers statically
+_ : 5 - 3 ≡ 2
+_ = refl
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- this idiom is very common, and the STD defines a synonym for T [ ? ] called True
+True : ∀ {Q} → Dec Q → Set
+True Q = T [ Q ]
 
 
 
