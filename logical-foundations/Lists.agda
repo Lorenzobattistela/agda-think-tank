@@ -194,15 +194,163 @@ _ : map-Tree suc not (node (leaf 1) true (node (leaf 2) false (leaf 3))) ≡
 _ = refl
 
 
+-- Fold
+-- Takes an operator and a values, and uses the operator to combine each element of the elements of the list, taking the
+-- given value as the result for the empty list
+foldr : ∀ {A B : Set} → (A → B → B) → B → List A → B
+foldr _⊕_ e [] = e
+foldr _⊕_ e (x ∷ xs) = x ⊕ foldr _⊕_ e xs
 
+fold-Tree : ∀ {A B C : Set} → (A → C) → (C → B → C → C) → Tree A B → C
+fold-Tree f g (leaf x) = f x
+fold-Tree f g (node l x r) = g (fold-Tree f g l) x (fold-Tree f g r)
 
+-- example of using fold to find the sum of a list
+-- in this case we have an instance of foldr where A and B are both ℕ. Fold requires time linear in the length of the list
+_ : foldr _+_ 0 [ 1 , 2 , 3 , 4 ] ≡ 10
+_ =
+  begin
+    foldr _+_ 0 (1 ∷ 2 ∷ 3 ∷ 4 ∷ [])
+  ≡⟨⟩
+    1 + foldr _+_ 0 (2 ∷ 3 ∷ 4 ∷ [])
+  ≡⟨⟩
+    1 + (2 + foldr _+_ 0 (3 ∷ 4 ∷ []))
+  ≡⟨⟩
+    1 + (2 + (3 + foldr _+_ 0 (4 ∷ [])))
+  ≡⟨⟩
+    1 + (2 + (3 + (4 + foldr _+_ 0 [])))
+  ≡⟨⟩
+    1 + (2 + (3 + (4 + 0)))
+  ∎
 
+-- it is often convenient to exploit currying by applying fold to an operator and a value to yield a new function 
+sum : List ℕ → ℕ
+sum = foldr _+_ 0
 
+_ : sum [ 1 , 2 , 3 , 4 ] ≡ 10
+_ =
+  begin
+    sum [ 1 , 2 , 3 , 4 ]
+  ≡⟨⟩
+    foldr _+_ 0 [ 1 , 2 , 3 , 4 ]
+  ≡⟨⟩
+    10
+  ∎
 
+product : List ℕ → ℕ
+product = foldr _*_ 1
 
+_ : product [ 1 , 2 , 3 ] ≡ 6
+_ = refl
 
+-- Monoids
+-- typically when we use a fold the operator is associative and the value is a left and right identity for the operator
+-- meaning that the oeprator and the value form a monoid
 
+record IsMonoid {A : Set} (_⊕_ : A → A → A) (e : A) : Set where
+  field
+    assoc : ∀ (x y z : A) → (x ⊕ y) ⊕ z ≡ x ⊕ (y ⊕ z)
+    identityˡ : ∀ (x : A) → e ⊕ x ≡ x
+    identityʳ : ∀ (x : A) → x ⊕ e ≡ x
+open IsMonoid
 
+-- as examples, sum and zero, multiplication and one, append and the empty list are all examples of monoids:
++-monoid : IsMonoid _+_ 0
++-monoid =
+  record
+    { assoc = +-assoc
+    ; identityˡ = +-identityˡ
+    ; identityʳ = +-identityʳ
+    }
+
+*-monoid : IsMonoid _*_ 1
+*-monoid =
+  record
+    { assoc = *-assoc
+    ; identityˡ = *-identityˡ
+    ; identityʳ = *-identityʳ
+    }
+
+++-monoid : ∀ {A : Set} → IsMonoid {List A} _++_ []
+++-monoid =
+  record
+    { assoc = ++-assoc
+    ; identityˡ = ++-identityˡ
+    ; identityʳ = ++-identityʳ
+    }
+
+-- All
+-- We can also define predicates over lists. Two of the most important are All and Any
+-- Predicate All P holds if predicate P is satisfied by every element of a list
+
+data All {A : Set} (P : A → Set) : List A → Set where
+  [] : All P []
+  _∷_ : ∀ {x : A} {xs : List A} → P x → All P xs → All P (x ∷ xs)
+
+-- example: All (_≤ 2) holds of a list where every element is less than or eq to two
+_ : All (_≤ 2) [ 0 , 1 , 2 ]
+_ = z≤n ∷ s≤s z≤n ∷ s≤s (s≤s z≤n) ∷ []
+
+-- Any
+-- Predicate Any P holds if predicate P is satisfied by some element of a list
+data Any {A : Set} (P : A → Set) : List A → Set where
+  here : ∀ {x : A} {xs : List A} → P x → Any P (x ∷ xs)
+  there : ∀ {x : A} {xs : List A} → Any P xs → Any P (x ∷ xs)
+-- the first constructor provides evidence that the head of the list satisfies P, while the second provides evidence that some element of the tail of the list satisfies P. Example of list membership definition:
+
+infix 4 _∈_ _∉_
+
+_∈_ : ∀ {A : Set} (x : A) (xs : List A) → Set
+x ∈ xs = Any (x ≡_) xs
+
+_∉_ : ∀ {A : Set} (x : A) (xs : List A) → Set
+x ∉ xs = ¬ (x ∈ xs)
+
+_ : 0 ∈ [ 0 , 1 , 0 , 2 ]
+_ = here refl
+
+_ : 0 ∈ [ 0 , 1 , 0 , 2 ]
+_ = there (there (here refl))
+
+-- All and append:
+-- a predicate holds for every element of one list appended to another if and only if it holds for every element of both lists
+All-++-⇔ : ∀ {A : Set} {P : A → Set} (xs ys : List A) →
+  All P (xs ++ ys) ⇔ (All P xs × All P ys)
+All-++-⇔ xs ys =
+  record
+    { to       =  to xs ys
+    ; from     =  from xs ys
+    }
+  where
+
+  to : ∀ {A : Set} {P : A → Set} (xs ys : List A) →
+    All P (xs ++ ys) → (All P xs × All P ys)
+  to [] ys Pys = ⟨ [] , Pys ⟩
+  to (x ∷ xs) ys (Px ∷ Pxs++ys) with to xs ys Pxs++ys
+  ... | ⟨ Pxs , Pys ⟩ = ⟨ Px ∷ Pxs , Pys ⟩
+
+  from : ∀ { A : Set} {P : A → Set} (xs ys : List A) →
+    All P xs × All P ys → All P (xs ++ ys)
+  from [] ys ⟨ [] , Pys ⟩ = Pys
+  from (x ∷ xs) ys ⟨ Px ∷ Pxs , Pys ⟩ =  Px ∷ from xs ys ⟨ Pxs , Pys ⟩
+
+-- Decidability of All
+-- if we consider a predicate as a functino that yields a boolean, it is easy to define an analogue of All
+all : ∀ {A : Set} → (A → Bool) → List A → Bool
+all p  =  foldr _∧_ true ∘ map p
+
+-- if we replace booleans by decidables there is again an analogue of All. First, return to the notion of a predicate P as a function of type A → Set, taking a value x of type A into evidence P x that a property holds for x. Say that a predicate P is decidable if we have a function that for a given x can decide P x:
+Decidable : ∀ {A : Set} → (A → Set) → Set
+Decidable {A} P  =  ∀ (x : A) → Dec (P x)
+-- Then if predicate P is decidable, it is also decidable whether every element of a list satisfies the predicate:
+All? : ∀ {A : Set} {P : A → Set} → Decidable P → Decidable (All P)
+All? P? []                                 =  yes []
+All? P? (x ∷ xs) with P? x   | All? P? xs
+...                 | yes Px | yes Pxs     =  yes (Px ∷ Pxs)
+...                 | no ¬Px | _           =  no λ{ (Px ∷ Pxs) → ¬Px Px   }
+...                 | _      | no ¬Pxs     =  no λ{ (Px ∷ Pxs) → ¬Pxs Pxs }
+
+-- If the list is empty, then trivially P holds for every element of the list. Otherwise, the structure of the proof is similar to that showing that the conjunction of two decidable propositions is itself decidable, using _∷_ rather than ⟨_,_⟩ to combine the evidence for the head and tail of the list.
 
 
 
