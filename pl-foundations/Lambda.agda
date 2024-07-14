@@ -258,9 +258,280 @@ data _—→_ : Term → Term → Set where
 -- Further, the subterms are arranged in a way that they are reduced in a left-to-right order. This means that the reduction is deterministic. For any term, there is at most one other term to which it reduces. Our reduction relation is in fact a function.
 
 -- Reflexive and transitive closure
+-- but a single step is only part of the story. In general, we wish to repeatedly step a closed term until it reduces to a value.
+-- We do this by defining the reflexive and transitive closure of the step relation. We define reflexive and transitive closure as a sequence of zero or more steps of the underlying relation.
+infix  2 _—↠_
+infix  1 begin_
+infixr 2 _—→⟨_⟩_
+infix  3 _∎
+
+data _—↠_ : Term → Term → Set where
+  _∎ : ∀ M
+      ---------
+    → M —↠ M
+
+  step—→ : ∀ L {M N}
+    → M —↠ N
+    → L —→ M
+      ---------
+    → L —↠ N
+
+pattern _—→⟨_⟩_ L L—→M M—↠N = step—→ L M—↠N L—→M
+
+begin_ : ∀ {M N}
+  → M —↠ N
+    ------
+  → M —↠ N
+begin M—↠N = M—↠N
+
+-- this can be read as follows:
+-- From term M, we can take no steps, giving a step of type M -->> M. It is written M blackbox
+-- From a term L we can take a single step of type L -> M followed by zero or more steps of type M ->> N, giving a step of type L ->> N. It is written L ->> ⟨ L -> M ⟩ M->>N where L->M and M->>N are steps of the appropriate type
+
+-- Confluence: one important property a reduction relation might satisfy is to be confluent. If term L reduces to two other terms, M and N, then both of these reduce to a common term P. 
+postulate
+  confluence : ∀ {L M N}
+    → ((L —↠ M) × (L —↠ N))
+      --------------------
+    → ∃[ P ] ((M —↠ P) × (N —↠ P))
+
+  diamond : ∀ {L M N}
+    → ((L —→ M) × (L —→ N))
+      --------------------
+    → ∃[ P ] ((M —↠ P) × (N —↠ P))
+
+-- the reduction system studied in this chapter is deterministic, as in:
+postulate
+  deterministic : ∀ {L M N}
+    → L —→ M
+    → L —→ N
+      ------
+    → M ≡ N
+
+-- it is easy to show that every deterministic relation satisfies the diamond and confluence properties. Hence, all the reduction systems studied are trivially confluent.
+--
+-- Example: The church numeral two applied to the suc and zero yields the nat number two.
+_ : twoᶜ · sucᶜ · `zero —↠ `suc `suc `zero
+_ =
+  begin
+    twoᶜ · sucᶜ · `zero
+  —→⟨ ξ-·₁ (β-ƛ V-ƛ) ⟩
+    (ƛ "z" ⇒ sucᶜ · (sucᶜ · ` "z")) · `zero
+  —→⟨ β-ƛ V-zero ⟩
+    sucᶜ · (sucᶜ · `zero)
+  —→⟨ ξ-·₂ V-ƛ (β-ƛ V-zero) ⟩
+    sucᶜ · `suc `zero
+  —→⟨ β-ƛ (V-suc V-zero) ⟩
+    `suc (`suc `zero)
+  ∎
+
+-- two plus two is four!
+_ : plus · two · two —↠ `suc `suc `suc `suc `zero
+_ =
+  begin
+    plus · two · two
+  —→⟨ ξ-·₁ (ξ-·₁ β-μ) ⟩
+    (ƛ "m" ⇒ ƛ "n" ⇒
+      case ` "m" [zero⇒ ` "n" |suc "m" ⇒ `suc (plus · ` "m" · ` "n") ])
+        · two · two
+  —→⟨ ξ-·₁ (β-ƛ (V-suc (V-suc V-zero))) ⟩
+    (ƛ "n" ⇒
+      case two [zero⇒ ` "n" |suc "m" ⇒ `suc (plus · ` "m" · ` "n") ])
+         · two
+  —→⟨ β-ƛ (V-suc (V-suc V-zero)) ⟩
+    case two [zero⇒ two |suc "m" ⇒ `suc (plus · ` "m" · two) ]
+  —→⟨ β-suc (V-suc V-zero) ⟩
+    `suc (plus · `suc `zero · two)
+  —→⟨ ξ-suc (ξ-·₁ (ξ-·₁ β-μ)) ⟩
+    `suc ((ƛ "m" ⇒ ƛ "n" ⇒
+      case ` "m" [zero⇒ ` "n" |suc "m" ⇒ `suc (plus · ` "m" · ` "n") ])
+        · `suc `zero · two)
+  —→⟨ ξ-suc (ξ-·₁ (β-ƛ (V-suc V-zero))) ⟩
+    `suc ((ƛ "n" ⇒
+      case `suc `zero [zero⇒ ` "n" |suc "m" ⇒ `suc (plus · ` "m" · ` "n") ])
+        · two)
+  —→⟨ ξ-suc (β-ƛ (V-suc (V-suc V-zero))) ⟩
+    `suc (case `suc `zero [zero⇒ two |suc "m" ⇒ `suc (plus · ` "m" · two) ])
+  —→⟨ ξ-suc (β-suc V-zero) ⟩
+    `suc `suc (plus · `zero · two)
+  —→⟨ ξ-suc (ξ-suc (ξ-·₁ (ξ-·₁ β-μ))) ⟩
+    `suc `suc ((ƛ "m" ⇒ ƛ "n" ⇒
+      case ` "m" [zero⇒ ` "n" |suc "m" ⇒ `suc (plus · ` "m" · ` "n") ])
+        · `zero · two)
+  —→⟨ ξ-suc (ξ-suc (ξ-·₁ (β-ƛ V-zero))) ⟩
+    `suc `suc ((ƛ "n" ⇒
+      case `zero [zero⇒ ` "n" |suc "m" ⇒ `suc (plus · ` "m" · ` "n") ])
+        · two)
+  —→⟨ ξ-suc (ξ-suc (β-ƛ (V-suc (V-suc V-zero)))) ⟩
+    `suc `suc (case `zero [zero⇒ two |suc "m" ⇒ `suc (plus · ` "m" · two) ])
+  —→⟨ ξ-suc (ξ-suc β-zero) ⟩
+    `suc (`suc (`suc (`suc `zero)))
+  ∎
+
+-- EXERCISE: one plus one is two
 
 
 
 
 
 
+-- Syntax of Types
+-- There are only two types: Functions, A => B and Naturals ‵ℕ (variants to avoid overlapping)
+
+infixr 7 _⇒_
+
+data Type : Set where
+  _⇒_ : Type → Type → Type
+  `ℕ : Type
+
+
+-- Typing
+-- Contexts
+-- While reduction considers only closed terms, typing must consider terms with free variables. To type a term, we must first type its subterms, and in particular in the body of an abstraction its bound variable may appear free.
+-- A context associates variables with types. we let Γ and Δ range over contexts. We write ∅ for the empty context, and Γ , X ⦂A for the context that extends Γ associating variable x with type A. For example:
+-- ∅ , "S" ⦂ ‵ℕ ⇒ ‵ℕ , "z' ⦂ ‵ℕ is the context that associates variable "s" with type N -> N and variable z with type N
+-- Contexts are formalised as follows:
+--
+
+infixl 5 _,_⦂_
+
+data Context : Set where
+  ∅ : Context
+  _,_⦂_ : Context → Id → Type → Context
+
+-- Lookup judgement
+-- We have two forms of judgement. The first is written: Γ ∋ x ⦂ A and indicates in context Γ that variable x has type A. It is called lookup. Example:
+-- ∅ , "s" ⦂ ‵ℕ ⇒ ‵ℕ , "z" ⦂ ‵ℕ ∋ "s" ⦂ ‵ℕ ⇒ ‵ℕ gives the type associated with variable "s"
+-- If two variables in a contex have the same name, then lookup should return the most recently bound variable, which shadows the other variables. 
+
+infix  4  _∋_⦂_
+
+data _∋_⦂_ : Context → Id → Type → Set where
+
+  Z : ∀ {Γ x A}
+      ------------------
+    → Γ , x ⦂ A ∋ x ⦂ A
+
+  S : ∀ {Γ x y A B}
+    → x ≢ y
+    → Γ ∋ x ⦂ A
+      ------------------
+    → Γ , y ⦂ B ∋ x ⦂ A
+-- the constructors Z and S correspond roughly to the constructors here and there for the element-of-relation _∈_ on lists. The constructor S takes an additional parameter, that ensures that when we look up a variable that it is not shadowed by another variable with the same name to its left in the list.
+-- It can be tedious to use the S constructor because you have to provide proofs that x ≢ y each time. Example:
+
+_ : ∅ , "x" ⦂ `ℕ ⇒ `ℕ , "y" ⦂ `ℕ , "z" ⦂ `ℕ ∋ "x" ⦂ `ℕ ⇒ `ℕ
+_ = S (λ()) (S (λ()) Z)
+
+-- instead, the use of a smart constructor that uses proof by refl to check the inequality while type checking is more convenient:
+S′ : ∀ {Γ x y A B}
+   → {x≢y : False (x ≟ y)}
+   → Γ ∋ x ⦂ A
+     ------------------
+   → Γ , y ⦂ B ∋ x ⦂ A
+
+S′ {x≢y = x≢y} x = S (toWitnessFalse x≢y) x
+
+-- Typing judgmenet
+-- The second judgement is written:
+-- Γ ⊢ M ⦂ A and indicates in context Γ that term M has type A. Context Γ provides types for all the free variables in M.
+
+infix  4  _⊢_⦂_
+
+data _⊢_⦂_ : Context → Term → Type → Set where
+
+  -- Axiom
+  ⊢` : ∀ {Γ x A}
+    → Γ ∋ x ⦂ A
+      -----------
+    → Γ ⊢ ` x ⦂ A
+
+  -- ⇒-I
+  ⊢ƛ : ∀ {Γ x N A B}
+    → Γ , x ⦂ A ⊢ N ⦂ B
+      -------------------
+    → Γ ⊢ ƛ x ⇒ N ⦂ A ⇒ B
+
+  -- ⇒-E
+  _·_ : ∀ {Γ L M A B}
+    → Γ ⊢ L ⦂ A ⇒ B
+    → Γ ⊢ M ⦂ A
+      -------------
+    → Γ ⊢ L · M ⦂ B
+
+  -- ℕ-I₁
+  ⊢zero : ∀ {Γ}
+      --------------
+    → Γ ⊢ `zero ⦂ `ℕ
+
+  -- ℕ-I₂
+  ⊢suc : ∀ {Γ M}
+    → Γ ⊢ M ⦂ `ℕ
+      ---------------
+    → Γ ⊢ `suc M ⦂ `ℕ
+
+  -- ℕ-E
+  ⊢case : ∀ {Γ L M x N A}
+    → Γ ⊢ L ⦂ `ℕ
+    → Γ ⊢ M ⦂ A
+    → Γ , x ⦂ `ℕ ⊢ N ⦂ A
+      -------------------------------------
+    → Γ ⊢ case L [zero⇒ M |suc x ⇒ N ] ⦂ A
+
+  ⊢μ : ∀ {Γ x M A}
+    → Γ , x ⦂ A ⊢ M ⦂ A
+      -----------------
+    → Γ ⊢ μ x ⇒ M ⦂ A
+
+
+-- Each type rule is named after the constructor for the corresponding term.
+-- Most of the rules have a second name, derived from a convention in logic, whereby the rule is named after the type connective that it concerns; rules to introduce and to eliminate each connective are labeled -I and -E, respectively. As we read the rules from top to bottom, introduction and elimination rules do what they say on the tin: the first introduces a formula for the connective, which appears in the conclusion but not in the premises; while the second eliminates a formula for the connective, which appears in a premise but not in the conclusion. An introduction rule describes how to construct a value of the type (abstractions yield functions, successor and zero yield naturals), while an elimination rule describes how to deconstruct a value of the given type (applications use functions, case expressions use naturals).
+-- Note also the three places (in ⊢ƛ, ⊢case, and ⊢μ) where the context is extended with x and an appropriate type, corresponding to the three places where a bound variable is introduced.
+-- The rules are deterministic, in that at most one rule applies to every term.
+
+-- Typings corresponding to computing two plus two:
+⊢two : ∀ {Γ} → Γ ⊢ two ⦂ `ℕ
+⊢two = ⊢suc (⊢suc ⊢zero)
+
+⊢plus : ∀ {Γ} → Γ ⊢ plus ⦂ `ℕ ⇒ `ℕ ⇒ `ℕ
+⊢plus = ⊢μ (⊢ƛ (⊢ƛ (⊢case (⊢` ∋m) (⊢` ∋n)
+         (⊢suc (⊢` ∋+ · ⊢` ∋m′ · ⊢` ∋n′)))))
+  where
+  ∋+  = S′ (S′ (S′ Z))
+  ∋m  = S′ Z
+  ∋n  = Z
+  ∋m′ = Z
+  ∋n′ = S′ Z
+
+⊢2+2 : ∅ ⊢ plus · two · two ⦂ `ℕ
+⊢2+2 = ⊢plus · ⊢two · ⊢two
+
+
+-- In contrast to our earlier examples, here we have typed two and plus in an arbitrary context rather than the empty context; this makes it easy to use them inside other binding contexts as well as at the top level. Here the two lookup judgments ∋m and ∋m′ refer to two different bindings of variables named "m". In contrast, the two judgments ∋n and ∋n′ both refer to the same binding of "n" but accessed in different contexts, the first where "n" is the last binding in the context, and the second after "m" is bound in the successor branch of the case.
+
+
+-- Lookup is functional
+-- The lookup relation is functional, in that for each Γ and x there is at most one A such that the judgement holds:
+∋-functional : ∀ {Γ x A B} → Γ ∋ x ⦂ A → Γ ∋ x ⦂ B → A ≡ B
+∋-functional Z        Z          =  refl
+∋-functional Z        (S x≢ _)   =  ⊥-elim (x≢ refl)
+∋-functional (S x≢ _) Z          =  ⊥-elim (x≢ refl)
+∋-functional (S _ ∋x) (S _ ∋x′)  =  ∋-functional ∋x ∋x′
+
+
+-- The typing relation Γ ⊢ M ⦂ A is not functional. For example, in any Γ the term ƛ "x" ⇒ ` "x" has type A ⇒ A for any type A.
+
+-- Non examples:
+-- We can also show that terms are not typeable. For example, here is a formal proof that it is not possible to type the term `zero · `suc `zero. It cannot be typed, because doing so requires that the first term in the application is both a natural and a function:
+
+nope₁ : ∀ {A} → ¬ (∅ ⊢ `zero · `suc `zero ⦂ A)
+nope₁ (() · _)
+
+
+-- As a second example, here is a formal proof that it is not possible to type ƛ "x" ⇒ ` "x" · ` "x". It cannot be typed, because doing so requires types A and B such that A ⇒ B ≡ A:
+
+nope₂ : ∀ {A} → ¬ (∅ ⊢ ƛ "x" ⇒ ` "x" · ` "x" ⦂ A)
+nope₂ (⊢ƛ (⊢` ∋x · ⊢` ∋x′))  =  contradiction (∋-functional ∋x ∋x′)
+  where
+  contradiction : ∀ {A B} → ¬ (A ⇒ B ≡ A)
+  contradiction ()
