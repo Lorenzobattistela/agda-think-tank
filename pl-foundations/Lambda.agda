@@ -368,13 +368,6 @@ _ =
     `suc (`suc (`suc (`suc `zero)))
   ∎
 
--- EXERCISE: one plus one is two
-
-
-
-
-
-
 -- Syntax of Types
 -- There are only two types: Functions, A => B and Naturals ‵ℕ (variants to avoid overlapping)
 
