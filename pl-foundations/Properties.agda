@@ -201,48 +201,348 @@ swap {Γ} {x} {y} {M} {A} {B} {C} x≢y ⊢M = rename ρ ⊢M
   ρ Z                   =  S x≢y Z
   ρ (S z≢x Z)           =  Z
   ρ (S z≢x (S z≢y ∋z))  =  S z≢y (S z≢x ∋z)
--- Here the renaming map takes a variable at the end into a variable one from the end, and vice versa. The first line is responsible for moving x from a position at the end to a position one from the end with y at the end, and required the provided evidence that x≢y.
+-- Here the renaming map takes a variable at the end into a variable one from the end, and vice versa. The first line is responsible for moving x from a position at the end to a position one from the end with y at the end, and required the provided evidence that x≢y
 
 -- Substitution
+-- The key to preservation is the lemma establishing that substitution preserves types
+-- In order to avoid renaming bound variables, substitution is restricted to be by closed terms only. This restriction was not enforced by our definition of substitution, but it is captured by our lemma to assert that substitution preserves typing.
+-- The concern is with reducing closed terms, which means that when we apply β reduction, the term substituted in contains a single free variable (the bound variable of the lambda abstraction, or similarly for case or fixpoint). However, substitution is defined by recursion, and as we descend into terms with bound variables the context grows. So for the induction to go through, we require an arbitrary context Γ, as in the statement of the lemma.
+-- Fromal statment and proof that substitution preserves types:
+subst : ∀ {Γ x N V A B}
+  → ∅ ⊢ V ⦂ A
+  → Γ , x ⦂ A ⊢ N ⦂ B
+    --------------------
+  → Γ ⊢ N [ x := V ] ⦂ B
+subst {x = y} ⊢V (⊢` {x = x} Z) with x ≟ y
+... | yes _         =  weaken ⊢V
+... | no  x≢y       =  ⊥-elim (x≢y refl)
+subst {x = y} ⊢V (⊢` {x = x} (S x≢y ∋x)) with x ≟ y
+... | yes refl      =  ⊥-elim (x≢y refl)
+... | no  _         =  ⊢` ∋x
+subst {x = y} ⊢V (⊢ƛ {x = x} ⊢N) with x ≟ y
+... | yes refl      =  ⊢ƛ (drop ⊢N)
+... | no  x≢y       =  ⊢ƛ (subst ⊢V (swap x≢y ⊢N))
+subst ⊢V (⊢L · ⊢M)  =  (subst ⊢V ⊢L) · (subst ⊢V ⊢M)
+subst ⊢V ⊢zero      =  ⊢zero
+subst ⊢V (⊢suc ⊢M)  =  ⊢suc (subst ⊢V ⊢M)
+subst {x = y} ⊢V (⊢case {x = x} ⊢L ⊢M ⊢N) with x ≟ y
+... | yes refl      =  ⊢case (subst ⊢V ⊢L) (subst ⊢V ⊢M) (drop ⊢N)
+... | no  x≢y       =  ⊢case (subst ⊢V ⊢L) (subst ⊢V ⊢M) (subst ⊢V (swap x≢y ⊢N))
+subst {x = y} ⊢V (⊢μ {x = x} ⊢M) with x ≟ y
+... | yes refl      =  ⊢μ (drop ⊢M)
+... | no  x≢y       =  ⊢μ (subst ⊢V (swap x≢y ⊢M))
+-- We induct on the evidence tha N is well typed in the context Γ extended by x
+-- We note a issue with naming. In the lemma statement, the varialbe x is an implicit parameter for the variable substituted, while in the type rules for variables, abstractions, cases and fixpoints, the variable x is an implicit parameter for the relevant variable. We are going to need to get hold of both variables, so we use the syntax { x = y } to bind y to the substituted variable and the syntax { x = x } to bind x to the relevant variable in the patterns for ⊢′ , ⊢ƛ , ⊢case and ⊢μ . Using the name y here is consistent with the naming in the original definition of substitution in the previous chapter. The proof never mentions the types of x, y, V or N, so in what follows we choose type names as convenient.
+-- Now what naming is resolved, we can unpack the first three cases: 
+-- In the variable case, we must show:
+-- ∅ ⊢ V ⦂ B
+-- Γ , y ⦂ B ⊢ ` x ⦂ A
+-- ------------------------
+-- Γ ⊢ ` x [ y := V ] ⦂ A
+-- Where the second hypothesis follows from
+-- Γ , y ⦂ B ∋ x ⦂ A
+-- There are two subcases, depending on the evidence for this judgement:
+
+-- The lookup judgement is evidenced by rule Z:
+-- ----------------
+-- Γ , x ⦂ A ∋ x ⦂ A
+-- In this case, x and y are necessarily identical, as are A and B. Nonetheless, we must evaluate x ≟ y in order to allow definition of substitution to simplify:
+--  If the variables are equal, then after simplification we must show
+--  ∅ ⊢ V ⦂ A
+--  ---------
+--  Γ ⊢ V ⦂ A
+-- which follows by weakening
+--  If the variables are unequal we have a contradiction
+
+-- If the lookup judgement is evidenced by the rule S:
+-- x ≢ y
+-- Γ ∋ x ⦂ A
+-- -----------
+-- Γ , y ⦂ B ∋ x ⦂ A
+-- in this case, x and y are necessarily distinct. Nonetheless, we must again evaluate x ≟ y in order to allow the definition of substitution to simplify:
+--  If the variables are equal, we have a contradiction
+--  If the variables are unequal, then after simplification we must show:
+--  ∅ ⊢ V ⦂ B
+--  x ≢ y
+--  Γ ∋ x ⦂ A
+--  -------------
+--  Γ ⊢ ` x ⦂ A
+--  which follows by the typing rule for variables
+
+-- In the abstraction case, we must show:
+-- ∅ ⊢ V ⦂ B
+-- Γ , y ⦂ B ⊢ (ƛ x ⇒ N) ⦂ A ⇒ C
+-- --------------------------------
+-- Γ ⊢ (ƛ x ⇒ N) [ y := V ] ⦂ A ⇒ C
+-- where the second hypothesis follows from:
+-- Γ, y ⦂ B , x ⦂ A ⊢ N ⦂C
+-- We evaluate x ≟ y in order to allow the definition of substitution to simplify:
+--  If the variables are equal then after simplification we must show:
+--  ∅ ⊢ V ⦂ B
+--  Γ , x ⦂ B , x ⦂ A ⊢ N ⦂ C
+--  -------------------------
+--  Γ ⊢ ƛ x ⇒ N ⦂ A ⇒ C
+--  From the drop lemma we know:
+--  Γ , x ⦂ B , x ⦂ A ⊢ N ⦂ C
+-- -------------------------
+--  Γ , x ⦂ A ⊢ N ⦂ C
+--  The ty0ping rule for abstraction then yields the required conclusion
+
+--  If the variables are distinct then after simplification we must show:
+--  ∅ ⊢ V ⦂ B
+--  x ≢ y
+--  Γ , y ⦂ B , x ⦂ A ⊢ N ⦂ C
+--  --------------------------------
+--  Γ ⊢ ƛ x ⇒ (N [ y := V ]) ⦂ A ⇒ C
+--  from the swap lemma we know
+--  x ≢ y
+--  Γ , y ⦂ B , x ⦂ A ⊢ N ⦂ C
+--  -------------------------
+--  Γ , x ⦂ A , y ⦂ B ⊢ N ⦂ C
+-- the inductive hypothesis gives:
+--  ∅ ⊢ V ⦂ B
+--  Γ , x ⦂ A , y ⦂ B ⊢ N ⦂ C
+--  ----------------------------
+--  Γ , x ⦂ A ⊢ N [ y := V ] ⦂ C
+--  The typing rule for abstraction then yields the required conclusion
+--
+-- In the application case, we must show:
+-- ∅ ⊢ V ⦂ C
+-- Γ , y ⦂ C ⊢ L · M ⦂ B
+-- --------------------------
+-- Γ ⊢ (L · M) [ y := V ] ⦂ B
+-- where the second hypothesis follows from the two judgements:
+-- Γ , y ⦂ C ⊢ L ⦂ A ⇒ B
+-- Γ , y ⦂ C ⊢ M ⦂ A
+-- By the definition of substitution, we must show:
+-- ∅ ⊢ V ⦂ C
+-- Γ , y ⦂ C ⊢ L ⦂ A ⇒ B
+-- Γ , y ⦂ C ⊢ M ⦂ A
+-- ---------------------------------------
+-- Γ ⊢ (L [ y := V ]) · (M [ y := V ]) ⦂ B
+-- Applying the induction hypothesis for L and M and the typing rule for applications yields the required conclusion.
+
+-- The remaining cases are similar, using induction for each subterm. Where the constructor introduces a bound variable, we need to compare it with the substituted variable, applying the drop lemma if they are equal and the swap lemma if they are distinct.
+
+-- Preservation
+-- Once we have shown that substitution preserves types, showing that reduction preserves types is straightforward
+
+preserve : ∀ {M N A}
+  → ∅ ⊢ M ⦂ A
+  → M —→ N
+    ----------
+  → ∅ ⊢ N ⦂ A
+preserve (⊢` ())
+preserve (⊢ƛ ⊢N)                 ()
+preserve (⊢L · ⊢M)               (ξ-·₁ L—→L′)     =  (preserve ⊢L L—→L′) · ⊢M
+preserve (⊢L · ⊢M)               (ξ-·₂ VL M—→M′)  =  ⊢L · (preserve ⊢M M—→M′)
+preserve ((⊢ƛ ⊢N) · ⊢V)          (β-ƛ VV)         =  subst ⊢V ⊢N
+preserve ⊢zero                   ()
+preserve (⊢suc ⊢M)               (ξ-suc M—→M′)    =  ⊢suc (preserve ⊢M M—→M′)
+preserve (⊢case ⊢L ⊢M ⊢N)        (ξ-case L—→L′)   =  ⊢case (preserve ⊢L L—→L′) ⊢M ⊢N
+preserve (⊢case ⊢zero ⊢M ⊢N)     (β-zero)         =  ⊢M
+preserve (⊢case (⊢suc ⊢V) ⊢M ⊢N) (β-suc VV)       =  subst ⊢V ⊢N
+preserve (⊢μ ⊢M)                 (β-μ)            =  subst (⊢μ ⊢M) ⊢M
+-- the proof never mentions the types of M or N, so in what follows we choose type name as ocnvenient
+-- Lets unpack the cases for two of the reduction rules:
+-- Rule ξ-∙₁ we have:
+-- L —→ L′
+-- ----------------
+-- L · M —→ L′ · M
+-- where the left-hand side is typed by
+-- Γ ⊢ L ⦂ A ⇒ B
+-- Γ ⊢ M ⦂ A
+-- -------------
+-- Γ ⊢ L · M ⦂ B
+-- By induction, we have
+-- Γ ⊢ L ⦂ A ⇒ B
+-- L —→ L′
+-- --------------
+-- Γ ⊢ L′ ⦂ A ⇒ B
+-- from which the typing of the right-hand side follows immediately.
+-- Rule β-ƛ. We have
+-- Value V
+-- -----------------------------
+-- (ƛ x ⇒ N) · V —→ N [ x := V ]
+-- where the left-hand side is typed by
+-- Γ , x ⦂ A ⊢ N ⦂ B
+-- -------------------
+-- Γ ⊢ ƛ x ⇒ N ⦂ A ⇒ B    Γ ⊢ V ⦂ A
+-- --------------------------------
+-- Γ ⊢ (ƛ x ⇒ N) · V ⦂ B
+-- By the substitution lemma, we have
+-- Γ ⊢ V ⦂ A
+-- Γ , x ⦂ A ⊢ N ⦂ B
+-- --------------------
+-- Γ ⊢ N [ x := V ] ⦂ B
+-- from which the typing of the right-hand side follows immediately.
+-- The remaining cases are similar. Each ξ rule follows by induction, and each β rule follows by the substitution lemma.
+
+-- Evaluation
+-- By repeated application of progress and preservation, we can evaluate any well typed term. 
+-- Lets write an agda function that computes the reduction sequence from any given closed, well typed term to its value if it has one
+-- Some terms may reduce forever, such as sucμ = μ "x" ⇒ `suc (`"x")
+-- Since every agda computation must terminate (termination checker will complain), we cant simply ask agda to reduce a term to a value. Instead, we make it stop if it passes N reduction step. A good analogy is blockchain "gas" concept.
+
+record Gas : Set where
+  constructor gas
+  field
+    amount : ℕ
+-- When our evaluator returns a term ℕ, it will either give evidence that N is a value or indicate that it ran out of gas:
+
+data Finished (N : Term) : Set where
+  done :
+      Value N
+      ----------
+    → Finished N
+
+  out-of-gas :
+      ----------
+      Finished N
+
+-- Given a term L of type A, the evaluator will, for some N, return a reduction sequence from L to N and an indication of whether reduction finished:
+data Steps (L : Term) : Set where
+  steps : ∀ {N}
+    → L —↠ N
+    → Finished N
+      ----------
+    → Steps L
+
+-- The evaluator takes gas and evidence that a term is well typed, and returns the corresponding steps:
+eval : ∀ {L A}
+  → Gas
+  → ∅ ⊢ L ⦂ A
+    ---------
+  → Steps L
+eval {L} (gas zero)    ⊢L                     =  steps (L ∎) out-of-gas
+eval {L} (gas (suc m)) ⊢L with progress ⊢L
+... | done VL                                 =  steps (L ∎) (done VL)
+... | step {M} L—→M with eval (gas m) (preserve ⊢L L—→M)
+...    | steps M—↠N fin                       =  steps (L —→⟨ L—→M ⟩ M—↠N) fin
+-- let L be the name of the term we are reducing, and ⊢L be the evidence that L is well typed. We consider the amount of gas remaining. There are two possibilities:
+-- It is zero, so we stop early. We return the trivial reduction L ->> L and an indication that we are out of gas
+-- It is non-zero and after the next step we have m gas remaining. Apply progress to the evidence that term L is well typed. There are two possibilities:
+--  Term L is a value, so we are done. We return the trivial reduction sequence L ->> L and the evidence that L is a value
+--  Term L steps to another term M. Preservation provides evidence that M is also well typed, and we recursively invoke eval on the remaining gas. The result is evidence that M ->> N and indication of whether the reduction finished. We combine the evidence that L -> M and M ->> N to return evidence that L->> N and the indication of whether reduction finished.
+
+-- Examples:
+-- showing that it is well typed
+⊢sucμ : ∅ ⊢ μ "x" ⇒ `suc ` "x" ⦂ `ℕ
+⊢sucμ = ⊢μ (⊢suc (⊢` ∋x))
+  where
+  ∋x = Z
+
+-- To show the first three steps of the infinite reduction sequence, we evaluate with three steps worth of gas:
+_ : eval (gas 3) ⊢sucμ ≡
+  steps
+   (μ "x" ⇒ `suc ` "x"
+   —→⟨ β-μ ⟩
+    `suc (μ "x" ⇒ `suc ` "x")
+   —→⟨ ξ-suc β-μ ⟩
+    `suc (`suc (μ "x" ⇒ `suc ` "x"))
+   —→⟨ ξ-suc (ξ-suc β-μ) ⟩
+    `suc (`suc (`suc (μ "x" ⇒ `suc ` "x")))
+   ∎)
+   out-of-gas
+_ = refl
 
 
+-- Well typed terms dont get stuck
+-- A term is normal if it cannot reduce:
+
+Normal : Term → Set
+Normal M = ∀ {N} → ¬ (M —→ N)
+
+-- a term is stuck if it is normal yet not a value
+Stuck : Term → Set
+Stuck M = Normal M × ¬ Value M
+
+-- using progress, it is easy to show that no well-typed term is stuck
+
+postulate
+  unstuck : ∀ {M A}
+    → ∅ ⊢ M ⦂ A
+      -----------
+    → ¬ (Stuck M)
+
+-- using preservation, it is easy to show that after any number of steps, a well-typed term remains well typed
+
+postulate
+  preserves : ∀ {M N A}
+    → ∅ ⊢ M ⦂ A
+    → M —↠ N
+      ----------
+    → ∅ ⊢ N ⦂ A
+
+-- an easy consequence is that starting from a well typed term, taking any number of reduction steps leads to a term that is not stuck:
+postulate
+  wttdgs : ∀ {M N A}
+    → ∅ ⊢ M ⦂ A
+    → M —↠ N
+      ------------
+    → ¬ (Stuck N)
+
+-- Felleisen and wright who introduce proof via progress and preservatoin, summarised this result with the slogan well-typed terms dont get stuck. 
 
 
+-- Reduction is deterministic
+-- When introduced reduction, there was a claim that it was deterministic. For completeness, now we shall present a formal proof.
+-- We will need a variant of congruence to deal with functions of four arguments
+cong₄ : ∀ {A B C D E : Set} (f : A → B → C → D → E)
+  {s w : A} {t x : B} {u y : C} {v z : D}
+  → s ≡ w → t ≡ x → u ≡ y → v ≡ z → f s t u v ≡ f w x y z
+cong₄ f refl refl refl refl = refl
 
+-- and now we can show that reduction is deterministic:
+det : ∀ {M M′ M″}
+  → (M —→ M′)
+  → (M —→ M″)
+    --------
+  → M′ ≡ M″
+det (ξ-·₁ L—→L′)   (ξ-·₁ L—→L″)     =  cong₂ _·_ (det L—→L′ L—→L″) refl
+det (ξ-·₁ L—→L′)   (ξ-·₂ VL M—→M″)  =  ⊥-elim (V¬—→ VL L—→L′)
+det (ξ-·₁ L—→L′)   (β-ƛ _)          =  ⊥-elim (V¬—→ V-ƛ L—→L′)
+det (ξ-·₂ VL _)    (ξ-·₁ L—→L″)     =  ⊥-elim (V¬—→ VL L—→L″)
+det (ξ-·₂ _ M—→M′) (ξ-·₂ _ M—→M″)   =  cong₂ _·_ refl (det M—→M′ M—→M″)
+det (ξ-·₂ _ M—→M′) (β-ƛ VM)         =  ⊥-elim (V¬—→ VM M—→M′)
+det (β-ƛ _)        (ξ-·₁ L—→L″)     =  ⊥-elim (V¬—→ V-ƛ L—→L″)
+det (β-ƛ VM)       (ξ-·₂ _ M—→M″)   =  ⊥-elim (V¬—→ VM M—→M″)
+det (β-ƛ _)        (β-ƛ _)          =  refl
+det (ξ-suc M—→M′)  (ξ-suc M—→M″)    =  cong `suc_ (det M—→M′ M—→M″)
+det (ξ-case L—→L′) (ξ-case L—→L″)   =  cong₄ case_[zero⇒_|suc_⇒_]
+                                         (det L—→L′ L—→L″) refl refl refl
+det (ξ-case L—→L′) β-zero           =  ⊥-elim (V¬—→ V-zero L—→L′)
+det (ξ-case L—→L′) (β-suc VL)       =  ⊥-elim (V¬—→ (V-suc VL) L—→L′)
+det β-zero         (ξ-case M—→M″)   =  ⊥-elim (V¬—→ V-zero M—→M″)
+det β-zero         β-zero           =  refl
+det (β-suc VL)     (ξ-case L—→L″)   =  ⊥-elim (V¬—→ (V-suc VL) L—→L″)
+det (β-suc _)      (β-suc _)        =  refl
+det β-μ            β-μ              =  refl
+-- the proof is by induction over possible reductions. Considering three typical cases:
+-- Two instances of ξ-·₁:
+-- L —→ L′                 L —→ L″
+-- --------------- ξ-·₁    --------------- ξ-·₁
+-- L · M —→ L′ · M         L · M —→ L″ · M
+-- By induction we have L′ ≡ L″, and hence by congruence L′ · M ≡ L″ · M.
 
+-- An instance of ξ-·₁ and an instance of ξ-·₂:
+                        -- Value L
+-- L —→ L′                 M —→ M″
+-- --------------- ξ-·₁    --------------- ξ-·₂
+-- L · M —→ L′ · M         L · M —→ L · M″
+-- The rule on the left requires L to reduce, but the rule on the right requires L to be a value. This is a contradiction since values do not reduce. If the value constraint was removed from ξ-·₂, or from one of the other reduction rules, then determinism would no longer hold.
 
+-- Two instances of β-ƛ:
 
+-- Value V                              Value V
+-- ----------------------------- β-ƛ    ----------------------------- β-ƛ
+-- (ƛ x ⇒ N) · V —→ N [ x := V ]        (ƛ x ⇒ N) · V —→ N [ x := V ]
+-- Since the left-hand sides are identical, the right-hand sides are also identical. The formal proof simply invokes refl.
 
+-- Five of the 18 lines in the above proof are redundant, e.g., the case when one rule is ξ-·₁ and the other is ξ-·₂ is considered twice, once with ξ-·₁ first and ξ-·₂ second, and the other time with the two swapped. What we might like to do is delete the redundant lines and add
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- det M—→M′ M—→M″ = sym (det M—→M″ M—→M′)
+-- to the bottom of the proof. But this does not work: the termination checker complains, because the arguments have merely switched order and neither is smaller.
 
 
 
